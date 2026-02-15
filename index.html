@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST - Verificar LocalStorage Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 { color: #667eea; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .data { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5568d3; }
+    </style>
+</head>
+<body>
+    <h1>🧪 TEST - Verificar Clone LocalStorage</h1>
+    
+    <div class="test-box">
+        <h2>📥 Cargar Datos desde Google Sheets</h2>
+        <button onclick="cargarDatos()">Cargar Datos Ahora</button>
+        <button onclick="limpiarLocalStorage()">Limpiar localStorage</button>
+        <div id="status"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>📊 Datos en LocalStorage:</h2>
+        <div id="localStorageData"></div>
+        <button onclick="mostrarLocalStorage()">Actualizar Vista</button>
+    </div>
+
+    <script>
+        const SHEET_ID = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+
+        function saveToCache(key, data) {
+            const cacheData = {
+                data: data,
+                timestamp: new Date().getTime()
+            };
+            localStorage.setItem(`simulador_${key}`, JSON.stringify(cacheData));
+        }
+
+        function getFromCache(key) {
+            try {
+                const cached = localStorage.getItem(`simulador_${key}`);
+                if (!cached) return null;
+                const cacheData = JSON.parse(cached);
+                return cacheData.data;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        async function loadColumnFromSheet(sheetName) {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!response.ok) throw new Error('Error en ' + sheetName);
+
+                const text = await response.text();
+                let jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
+                const json = JSON.parse(jsonStr);
+
+                const rows = json.table.rows || [];
+                const valores = [];
+
+                for (let i = 0; i < rows.length; i++) {
+                    const valor = rows[i]?.c?.[0]?.v;
+                    if (valor != null) {
+                        const num = parseFloat(valor);
+                        if (!isNaN(num)) valores.push(num);
+                    }
+                }
+
+                return valores;
+            } catch (error) {
+                clearTimeout(timeout);
+                throw error;
+            }
+        }
+
+        async function cargarDatos() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '<p>⏳ Cargando datos desde Google Sheets...</p>';
+
+            try {
+                // DIAS
+                statusDiv.innerHTML += '<p>📅 Cargando Dias...</p>';
+                const diasData = await loadColumnFromSheet('Dias');
+                saveToCache('dias', diasData);
+                statusDiv.innerHTML += `<p class="success">✅ Dias cargados: ${JSON.stringify(diasData)}</p>`;
+
+                // CAPITAL
+                statusDiv.innerHTML += '<p>💰 Cargando Capital...</p>';
+                const capitalData = await loadColumnFromSheet('Capital');
+                saveToCache('capital', capitalData);
+                statusDiv.innerHTML += `<p class="success">✅ Capital cargado: ${JSON.stringify(capitalData)}</p>`;
+
+                // INTERES
+                statusDiv.innerHTML += '<p>📊 Cargando Interes...</p>';
+                const interesData = await loadColumnFromSheet('Interes');
+                saveToCache('interes', interesData);
+                statusDiv.innerHTML += `<p class="success">✅ Interes cargado: ${JSON.stringify(interesData)}</p>`;
+
+                // BANNER
+                statusDiv.innerHTML += '<p>🎌 Cargando Banner...</p>';
+                const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Banner`;
+                const response = await fetch(gvizUrl);
+                const text = await response.text();
+                const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
+                const json = JSON.parse(jsonStr);
+                const rows = json.table.rows || [];
+                
+                if (rows.length > 1) {
+                    const mensajeBanner = rows[1]?.c?.[0]?.v;
+                    const bannerConfig = {
+                        activo: mensajeBanner && mensajeBanner.trim() !== '',
+                        texto: mensajeBanner || ''
+                    };
+                    saveToCache('banner_config', bannerConfig);
+                    statusDiv.innerHTML += `<p class="success">✅ Banner cargado: "${mensajeBanner}"</p>`;
+                }
+
+                statusDiv.innerHTML += '<p class="success"><strong>🎉 ¡TODOS LOS DATOS CARGADOS EXITOSAMENTE!</strong></p>';
+                mostrarLocalStorage();
+
+            } catch (error) {
+                statusDiv.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function mostrarLocalStorage() {
+            const div = document.getElementById('localStorageData');
+            const dias = getFromCache('dias');
+            const capital = getFromCache('capital');
+            const interes = getFromCache('interes');
+            const banner = getFromCache('banner_config');
+
+            div.innerHTML = `
+                <div class="data">
+                    <strong>DIAS:</strong> ${dias ? JSON.stringify(dias) : '❌ No hay datos'}
+                </div>
+                <div class="data">
+                    <strong>CAPITAL:</strong> ${capital ? JSON.stringify(capital) : '❌ No hay datos'}
+                </div>
+                <div class="data">
+                    <strong>INTERES:</strong> ${interes ? JSON.stringify(interes) : '❌ No hay datos'}
+                </div>
+                <div class="data">
+                    <strong>BANNER:</strong> ${banner ? JSON.stringify(banner) : '❌ No hay datos'}
+                </div>
+            `;
+        }
+
+        function limpiarLocalStorage() {
+            localStorage.removeItem('simulador_dias');
+            localStorage.removeItem('simulador_capital');
+            localStorage.removeItem('simulador_interes');
+            localStorage.removeItem('simulador_banner_config');
+            alert('✅ localStorage limpiado');
+            mostrarLocalStorage();
+        }
+
+        // Cargar al inicio
+        mostrarLocalStorage();
+    </script>
+</body>
+</html>
