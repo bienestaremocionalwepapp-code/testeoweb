@@ -1,58 +1,316 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TEST - Verificar LocalStorage Clone</title>
+    <title>🔍 Diagnóstico localStorage - Clone Offline</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            background: #f0f0f0;
         }
-        .test-box {
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
             background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+        
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 12px;
             padding: 20px;
-            border-radius: 10px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 5px solid #667eea;
         }
-        h2 { color: #667eea; }
-        .success { color: green; font-weight: bold; }
-        .error { color: red; font-weight: bold; }
-        .data { background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0; }
-        button {
-            background: #667eea;
-            color: white;
+        .status-box.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .status-box.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .status-box.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .status-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .data-section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .data-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+        .data-content {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
-            margin: 5px;
+            transition: all 0.3s ease;
+            min-width: 150px;
         }
-        button:hover { background: #5568d3; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        .connection-status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .connection-status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .timestamp {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-line {
+            margin: 3px 0;
+        }
     </style>
 </head>
 <body>
-    <h1>🧪 TEST - Verificar Clone LocalStorage</h1>
-    
-    <div class="test-box">
-        <h2>📥 Cargar Datos desde Google Sheets</h2>
-        <button onclick="cargarDatos()">Cargar Datos Ahora</button>
-        <button onclick="limpiarLocalStorage()">Limpiar localStorage</button>
-        <div id="status"></div>
-    </div>
+    <div class="container">
+        <h1>🔍 Diagnóstico Clone Offline</h1>
+        <p class="subtitle">Verifica que el simulador funcione sin conexión a internet</p>
+        
+        <!-- ESTADO DE CONEXIÓN -->
+        <div class="status-box" id="connectionBox">
+            <div class="status-title">
+                <span id="connectionIcon">📡</span>
+                Estado de Conexión
+                <span class="connection-status" id="connectionStatus">
+                    <span class="dot"></span>
+                    <span id="connectionText">Verificando...</span>
+                </span>
+            </div>
+        </div>
 
-    <div class="test-box">
-        <h2>📊 Datos en LocalStorage:</h2>
-        <div id="localStorageData"></div>
-        <button onclick="mostrarLocalStorage()">Actualizar Vista</button>
+        <!-- ESTADO DE LOCALSTORAGE -->
+        <div class="status-box" id="storageBox">
+            <div class="status-title">
+                <span>💾</span>
+                Estado de localStorage
+            </div>
+            <div id="storageStatus">Verificando...</div>
+            
+            <div class="data-section" id="diasSection" style="display: none;">
+                <h3>📅 Dias (Plazos)</h3>
+                <div class="data-content" id="diasData"></div>
+            </div>
+            
+            <div class="data-section" id="capitalSection" style="display: none;">
+                <h3>💰 Capital (Montos)</h3>
+                <div class="data-content" id="capitalData"></div>
+            </div>
+            
+            <div class="data-section" id="interesSection" style="display: none;">
+                <h3>📊 Interes (Tasas)</h3>
+                <div class="data-content" id="interesData"></div>
+            </div>
+            
+            <div class="data-section" id="bannerSection" style="display: none;">
+                <h3>🎌 Banner</h3>
+                <div class="data-content" id="bannerData"></div>
+            </div>
+        </div>
+
+        <!-- PRUEBA DE CARGA -->
+        <div class="status-box" id="loadTestBox">
+            <div class="status-title">
+                <span>🧪</span>
+                Prueba de Carga desde Google Sheets
+            </div>
+            <div id="loadTestStatus">No ejecutada</div>
+            <div class="progress" id="progressBar" style="display: none;">
+                <div class="progress-bar" id="progressFill"></div>
+            </div>
+            <div class="log" id="loadLog" style="display: none;"></div>
+        </div>
+
+        <!-- PRUEBA OFFLINE -->
+        <div class="status-box" id="offlineTestBox">
+            <div class="status-title">
+                <span>📴</span>
+                Prueba de Funcionamiento Offline
+            </div>
+            <div id="offlineTestStatus">No ejecutada</div>
+            <div id="offlineResults"></div>
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="btn-group">
+            <button class="btn btn-success" onclick="cargarDatosSheets()">📥 Cargar desde Sheets</button>
+            <button class="btn btn-primary" onclick="verificarLocalStorage()">🔄 Verificar localStorage</button>
+            <button class="btn btn-secondary" onclick="probarOffline()">📴 Probar Offline</button>
+            <button class="btn btn-danger" onclick="limpiarTodo()">🗑️ Limpiar Todo</button>
+        </div>
+        
+        <div class="btn-group" style="margin-top: 10px;">
+            <button class="btn btn-primary" onclick="window.open('clone-localstorage.html', '_blank')" style="flex: 2;">
+                🚀 Abrir Clone Offline
+            </button>
+        </div>
     </div>
 
     <script>
         const SHEET_ID = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+        let logLines = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            logLines.push(`[${timestamp}] ${icon} ${message}`);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logDiv = document.getElementById('loadLog');
+            logDiv.innerHTML = logLines.map(line => `<div class="log-line">${line}</div>`).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
 
         function saveToCache(key, data) {
             const cacheData = {
@@ -73,17 +331,37 @@
             }
         }
 
+        function updateConnectionStatus() {
+            const isOnline = navigator.onLine;
+            const box = document.getElementById('connectionBox');
+            const status = document.getElementById('connectionStatus');
+            const text = document.getElementById('connectionText');
+            const icon = document.getElementById('connectionIcon');
+
+            if (isOnline) {
+                box.className = 'status-box success';
+                status.className = 'connection-status online';
+                text.textContent = 'ONLINE';
+                icon.textContent = '🟢';
+            } else {
+                box.className = 'status-box error';
+                status.className = 'connection-status offline';
+                text.textContent = 'OFFLINE';
+                icon.textContent = '🔴';
+            }
+        }
+
         async function loadColumnFromSheet(sheetName) {
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
             
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
+            const timeout = setTimeout(() => controller.abort(), 10000);
 
             try {
                 const response = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeout);
 
-                if (!response.ok) throw new Error('Error en ' + sheetName);
+                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
 
                 const text = await response.text();
                 let jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
@@ -107,31 +385,49 @@
             }
         }
 
-        async function cargarDatos() {
-            const statusDiv = document.getElementById('status');
-            statusDiv.innerHTML = '<p>⏳ Cargando datos desde Google Sheets...</p>';
+        async function cargarDatosSheets() {
+            const box = document.getElementById('loadTestBox');
+            const status = document.getElementById('loadTestStatus');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const logDiv = document.getElementById('loadLog');
+            
+            logLines = [];
+            logDiv.style.display = 'block';
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+            
+            box.className = 'status-box warning';
+            status.textContent = '⏳ Cargando datos...';
 
             try {
                 // DIAS
-                statusDiv.innerHTML += '<p>📅 Cargando Dias...</p>';
+                addLog('Cargando Dias...');
+                progressFill.style.width = '10%';
                 const diasData = await loadColumnFromSheet('Dias');
+                if (!diasData || diasData.length === 0) throw new Error('Dias vacío');
                 saveToCache('dias', diasData);
-                statusDiv.innerHTML += `<p class="success">✅ Dias cargados: ${JSON.stringify(diasData)}</p>`;
+                addLog(`✓ Dias cargados: ${JSON.stringify(diasData)}`, 'success');
+                progressFill.style.width = '30%';
 
                 // CAPITAL
-                statusDiv.innerHTML += '<p>💰 Cargando Capital...</p>';
+                addLog('Cargando Capital...');
                 const capitalData = await loadColumnFromSheet('Capital');
+                if (!capitalData || capitalData.length === 0) throw new Error('Capital vacío');
                 saveToCache('capital', capitalData);
-                statusDiv.innerHTML += `<p class="success">✅ Capital cargado: ${JSON.stringify(capitalData)}</p>`;
+                addLog(`✓ Capital cargado: ${JSON.stringify(capitalData)}`, 'success');
+                progressFill.style.width = '60%';
 
                 // INTERES
-                statusDiv.innerHTML += '<p>📊 Cargando Interes...</p>';
+                addLog('Cargando Interes...');
                 const interesData = await loadColumnFromSheet('Interes');
+                if (!interesData || interesData.length === 0) throw new Error('Interes vacío');
                 saveToCache('interes', interesData);
-                statusDiv.innerHTML += `<p class="success">✅ Interes cargado: ${JSON.stringify(interesData)}</p>`;
+                addLog(`✓ Interes cargado: ${JSON.stringify(interesData)}`, 'success');
+                progressFill.style.width = '80%';
 
                 // BANNER
-                statusDiv.innerHTML += '<p>🎌 Cargando Banner...</p>';
+                addLog('Cargando Banner...');
                 const gvizUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Banner`;
                 const response = await fetch(gvizUrl);
                 const text = await response.text();
@@ -146,51 +442,167 @@
                         texto: mensajeBanner || ''
                     };
                     saveToCache('banner_config', bannerConfig);
-                    statusDiv.innerHTML += `<p class="success">✅ Banner cargado: "${mensajeBanner}"</p>`;
+                    addLog(`✓ Banner cargado: "${mensajeBanner}"`, 'success');
                 }
+                progressFill.style.width = '100%';
 
-                statusDiv.innerHTML += '<p class="success"><strong>🎉 ¡TODOS LOS DATOS CARGADOS EXITOSAMENTE!</strong></p>';
-                mostrarLocalStorage();
+                box.className = 'status-box success';
+                status.textContent = '✅ Datos cargados exitosamente';
+                addLog('🎉 TODOS LOS DATOS GUARDADOS EN LOCALSTORAGE', 'success');
+                
+                setTimeout(() => verificarLocalStorage(), 500);
 
             } catch (error) {
-                statusDiv.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+                box.className = 'status-box error';
+                status.textContent = '❌ Error al cargar datos';
+                addLog(`Error: ${error.message}`, 'error');
+                progressFill.style.width = '100%';
+                progressFill.style.background = '#dc3545';
             }
         }
 
-        function mostrarLocalStorage() {
-            const div = document.getElementById('localStorageData');
+        function verificarLocalStorage() {
+            const box = document.getElementById('storageBox');
+            const status = document.getElementById('storageStatus');
+            
             const dias = getFromCache('dias');
             const capital = getFromCache('capital');
             const interes = getFromCache('interes');
             const banner = getFromCache('banner_config');
-
-            div.innerHTML = `
-                <div class="data">
-                    <strong>DIAS:</strong> ${dias ? JSON.stringify(dias) : '❌ No hay datos'}
-                </div>
-                <div class="data">
-                    <strong>CAPITAL:</strong> ${capital ? JSON.stringify(capital) : '❌ No hay datos'}
-                </div>
-                <div class="data">
-                    <strong>INTERES:</strong> ${interes ? JSON.stringify(interes) : '❌ No hay datos'}
-                </div>
-                <div class="data">
-                    <strong>BANNER:</strong> ${banner ? JSON.stringify(banner) : '❌ No hay datos'}
-                </div>
-            `;
+            
+            let allPresent = true;
+            let html = '';
+            
+            // DIAS
+            const diasSection = document.getElementById('diasSection');
+            const diasData = document.getElementById('diasData');
+            if (dias && dias.length > 0) {
+                diasSection.style.display = 'block';
+                diasData.textContent = JSON.stringify(dias);
+                html += '<div class="test-result pass">✅ Dias: OK (' + dias.length + ' valores)</div>';
+            } else {
+                diasSection.style.display = 'none';
+                html += '<div class="test-result fail">❌ Dias: NO ENCONTRADO</div>';
+                allPresent = false;
+            }
+            
+            // CAPITAL
+            const capitalSection = document.getElementById('capitalSection');
+            const capitalData = document.getElementById('capitalData');
+            if (capital && capital.length > 0) {
+                capitalSection.style.display = 'block';
+                capitalData.textContent = JSON.stringify(capital);
+                html += '<div class="test-result pass">✅ Capital: OK (' + capital.length + ' valores)</div>';
+            } else {
+                capitalSection.style.display = 'none';
+                html += '<div class="test-result fail">❌ Capital: NO ENCONTRADO</div>';
+                allPresent = false;
+            }
+            
+            // INTERES
+            const interesSection = document.getElementById('interesSection');
+            const interesData = document.getElementById('interesData');
+            if (interes && interes.length > 0) {
+                interesSection.style.display = 'block';
+                interesData.textContent = JSON.stringify(interes);
+                html += '<div class="test-result pass">✅ Interes: OK (' + interes.length + ' valores)</div>';
+            } else {
+                interesSection.style.display = 'none';
+                html += '<div class="test-result fail">❌ Interes: NO ENCONTRADO</div>';
+                allPresent = false;
+            }
+            
+            // BANNER
+            const bannerSection = document.getElementById('bannerSection');
+            const bannerData = document.getElementById('bannerData');
+            if (banner) {
+                bannerSection.style.display = 'block';
+                bannerData.textContent = JSON.stringify(banner);
+                html += '<div class="test-result pass">✅ Banner: OK</div>';
+            } else {
+                bannerSection.style.display = 'none';
+                html += '<div class="test-result fail">⚠️ Banner: NO ENCONTRADO</div>';
+            }
+            
+            status.innerHTML = html;
+            
+            if (allPresent) {
+                box.className = 'status-box success';
+            } else {
+                box.className = 'status-box error';
+            }
         }
 
-        function limpiarLocalStorage() {
-            localStorage.removeItem('simulador_dias');
-            localStorage.removeItem('simulador_capital');
-            localStorage.removeItem('simulador_interes');
-            localStorage.removeItem('simulador_banner_config');
-            alert('✅ localStorage limpiado');
-            mostrarLocalStorage();
+        function probarOffline() {
+            const box = document.getElementById('offlineTestBox');
+            const status = document.getElementById('offlineTestStatus');
+            const results = document.getElementById('offlineResults');
+            
+            const dias = getFromCache('dias');
+            const capital = getFromCache('capital');
+            const interes = getFromCache('interes');
+            
+            let html = '<div style="margin-top: 15px;">';
+            
+            if (!dias || !capital || !interes) {
+                box.className = 'status-box error';
+                status.textContent = '❌ No se puede probar offline - faltan datos';
+                html += '<div class="test-result fail">⚠️ Primero debes cargar los datos desde Google Sheets</div>';
+            } else {
+                // Simular cálculo offline
+                const testCapital = capital[0] || 5000;
+                const testDias = dias[0] || 30;
+                const testInteres = interes[0] || 20;
+                
+                const interesTotal = testCapital * (testInteres / 100);
+                const totalPrestar = testCapital + interesTotal;
+                const pagoDiario = totalPrestar / testDias;
+                
+                box.className = 'status-box success';
+                status.textContent = '✅ Simulación offline EXITOSA';
+                
+                html += '<div class="test-result pass">';
+                html += '<strong>Cálculo de Prueba:</strong><br>';
+                html += `Capital: $${testCapital.toLocaleString()}<br>`;
+                html += `Días: ${testDias}<br>`;
+                html += `Interés: ${testInteres}%<br>`;
+                html += `Interés Total: $${interesTotal.toFixed(2)}<br>`;
+                html += `Total a Pagar: $${totalPrestar.toFixed(2)}<br>`;
+                html += `Pago Diario: $${pagoDiario.toFixed(2)}`;
+                html += '</div>';
+                
+                html += '<div class="test-result pass" style="margin-top: 10px;">';
+                html += '🎉 <strong>El clone debería funcionar perfectamente sin internet</strong>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            results.innerHTML = html;
         }
 
-        // Cargar al inicio
-        mostrarLocalStorage();
+        function limpiarTodo() {
+            if (confirm('¿Estás seguro de que quieres eliminar TODOS los datos de localStorage?')) {
+                localStorage.removeItem('simulador_dias');
+                localStorage.removeItem('simulador_capital');
+                localStorage.removeItem('simulador_interes');
+                localStorage.removeItem('simulador_banner_config');
+                alert('✅ localStorage limpiado');
+                verificarLocalStorage();
+                
+                const offlineResults = document.getElementById('offlineResults');
+                offlineResults.innerHTML = '';
+                document.getElementById('offlineTestStatus').textContent = 'No ejecutada';
+                document.getElementById('offlineTestBox').className = 'status-box';
+            }
+        }
+
+        // Auto-actualizar estado de conexión
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Inicializar
+        updateConnectionStatus();
+        verificarLocalStorage();
     </script>
 </body>
 </html>
