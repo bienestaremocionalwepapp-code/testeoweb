@@ -128,60 +128,65 @@
         // ============================================
         // Leer Interes VERTICAL con mapeo por posición
         // ============================================
-        async function leerInteres() {
-            console.log('📊 Leyendo Interes con mapeo por posición...');
-            
-            // Leer Dias
-            const rowsDias = await leerHojaCompleta('Dias');
-            
-            // Leer Interes
-            const rowsInteres = await leerHojaCompleta('Interes');
-            
-            const interesesObj = {};
-            const maxFilas = Math.max(rowsDias.length, rowsInteres.length);
-            
-            for (let i = 0; i < maxFilas; i++) {
-                const filaNum = i + 1;
-                
-                // Leer valor de Dias (columna A)
-                let diasValor = rowsDias[i]?.c?.[0]?.v;
-                
-                // Leer valor de Interes (columna A)
-                let interesValor = rowsInteres[i]?.c?.[0]?.v;
-                const interesFormato = rowsInteres[i]?.c?.[0]?.f;
-                
-                console.log(`  Fila ${filaNum}: Dias=${diasValor}, Interes=${interesValor}, Formato=${interesFormato}`);
-                
-                // Saltar encabezados
-                if (i === 0 && (isNaN(parseFloat(diasValor)) || isNaN(parseFloat(interesValor)))) {
-                    console.log(`    ⏭️ Saltando encabezado`);
-                    continue;
-                }
-                
-                const diasNum = parseFloat(diasValor);
-                let interesNum = parseFloat(interesValor);
-                
-                if (isNaN(diasNum) || isNaN(interesNum)) {
-                    console.log(`    ⚠️ Valores inválidos`);
-                    continue;
-                }
-                
-                // Detectar formato porcentaje
-                if (interesFormato && interesFormato.includes('%')) {
-                    interesNum = interesNum * 100;
-                    console.log(`    ✅ Convertido %: ${interesValor} → ${interesNum}`);
-                } else if (interesNum > 0 && interesNum < 1) {
-                    interesNum = interesNum * 100;
-                    console.log(`    ✅ Convertido decimal: ${interesValor} → ${interesNum}`);
-                }
-                
-                interesesObj[diasNum] = interesNum;
-                console.log(`    ✅ Mapeado: ${diasNum} días → ${interesNum}%`);
+       // ============================================
+// Leer Interes IGUAL que Dias y Capital
+// ============================================
+async function leerInteres() {
+    const rows = await leerHojaCompleta('Interes');
+    const valores = [];
+    
+    rows.forEach((row, idx) => {
+        const valor = row?.c?.[0]?.v;
+        const formato = row?.c?.[0]?.f;
+        
+        console.log(`  Fila ${idx + 1}: ${valor} (formato: ${formato})`);
+        
+        // Saltar encabezado si es texto
+        if (idx === 0 && isNaN(parseFloat(valor))) {
+            console.log(`    ⏭️ Saltando encabezado`);
+            return;
+        }
+        
+        let num = parseFloat(valor);
+        
+        if (!isNaN(num)) {
+            // Detectar formato porcentaje
+            if (formato && formato.includes('%')) {
+                num = num * 100;
+                console.log(`    ✅ Convertido %: ${valor} → ${num}`);
+            } else if (num > 0 && num < 1) {
+                num = num * 100;
+                console.log(`    ✅ Convertido decimal: ${valor} → ${num}`);
             }
             
-            console.log(`✅ Objeto de intereses final:`, interesesObj);
-            return interesesObj;
+            valores.push(num);
         }
+    });
+    
+    console.log(`✅ Interes valores finales:`, valores);
+    
+    // AHORA hacer el mapeo con Dias
+    const diasRows = await leerHojaCompleta('Dias');
+    const diasValores = [];
+    
+    diasRows.forEach((row, idx) => {
+        const valor = row?.c?.[0]?.v;
+        if (idx === 0 && isNaN(parseFloat(valor))) return;
+        const num = parseFloat(valor);
+        if (!isNaN(num)) diasValores.push(num);
+    });
+    
+    // Crear objeto mapeado
+    const interesesObj = {};
+    const minLength = Math.min(diasValores.length, valores.length);
+    
+    for (let i = 0; i < minLength; i++) {
+        interesesObj[diasValores[i]] = valores[i];
+    }
+    
+    console.log(`✅ Objeto mapeado:`, interesesObj);
+    return interesesObj;
+}
 
         // Leer Banner (celda A2)
         async function leerBanner() {
