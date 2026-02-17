@@ -47,10 +47,11 @@
 
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; font-weight: 600; color: #667eea; margin-bottom: 5px;">
-                        💰 Capital:
+                        💰 Selecciona Capital:
                     </label>
-                    <input type="number" id="calcCapital" placeholder="Ingresa el capital"
-                           value="5000" min="1000" max="50000" step="100">
+                    <select id="calcCapital">
+                        <option value="">-- Selecciona capital --</option>
+                    </select>
                 </div>
 
                 <button onclick="calcularDesdeCache()" style="width: 100%; background: #28a745; font-size: 1.1em; padding: 15px;">
@@ -257,6 +258,30 @@
         }
 
         // ============================================
+        // 4b. POBLAR SELECT DE CAPITAL DESDE CACHE
+        // ============================================
+        function poblarSelectCapital() {
+            const select = document.getElementById('calcCapital');
+            const capitalCache = getFromCache('capital');
+
+            while (select.options.length > 1) select.remove(1);
+
+            if (!capitalCache || capitalCache.length === 0) {
+                console.warn('⚠️ No hay capitales en cache para poblar el select');
+                return;
+            }
+
+            capitalCache.forEach(cap => {
+                const option = document.createElement('option');
+                option.value = cap;
+                option.textContent = '$' + cap.toLocaleString('es-MX');
+                select.appendChild(option);
+            });
+
+            console.log('✅ Select capital poblado desde cache:', capitalCache);
+        }
+
+        // ============================================
         // 5. CALCULAR DESDE CACHE  ← FUNCIÓN PRINCIPAL
         // ============================================
         function calcularDesdeCache() {
@@ -273,8 +298,8 @@
                 resultDiv.innerHTML = '<div class="warning">⚠️ Selecciona un plazo</div>';
                 return;
             }
-            if (!capital || capital < 1000 || capital > 50000) {
-                resultDiv.innerHTML = '<div class="warning">⚠️ Ingresa un capital válido ($1,000 - $50,000)</div>';
+            if (!capital || isNaN(capital)) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Selecciona un capital válido</div>';
                 return;
             }
 
@@ -520,6 +545,8 @@
 
                 // ✅ Actualizar el select del calculador con los nuevos días
                 poblarSelectDias();
+                // ✅ Actualizar el select del calculador con los capitales
+                poblarSelectCapital();
 
                 mostrarCache();
 
@@ -557,9 +584,11 @@
                 localStorage.removeItem('simulador_banner_config');
                 alert('✅ Cache limpiado');
                 mostrarCache();
-                // Reset select
+                // Reset selects
                 const select = document.getElementById('calcDias');
                 while (select.options.length > 1) select.remove(1);
+                const selectCap = document.getElementById('calcCapital');
+                while (selectCap.options.length > 1) selectCap.remove(1);
             }
         }
 
@@ -571,7 +600,8 @@
             console.log('📊 Sheet ID:', SHEET_ID);
             console.log('✅ Coma (,) → Punto (.) automático');
             mostrarCache();
-            poblarSelectDias(); // Si ya hay cache, el select se llena automáticamente
+            poblarSelectDias();     // Si ya hay cache, el select de días se llena automáticamente
+            poblarSelectCapital();  // Si ya hay cache, el select de capital se llena automáticamente
         });
     </script>
 </body>
