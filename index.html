@@ -52,7 +52,6 @@
     <script>
         const SHEET_ID = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
         
-        // Variable global para almacenar datos leídos de Sheets
         let datosDesdeSheets = {
             dias: null,
             capital: null,
@@ -81,127 +80,127 @@
             }
         }
 
-        // Leer columna A de una hoja
-        async function leerColumnaA(nombreHoja) {
+        // ============================================
+        // Leer hoja completa
+        // ============================================
+        async function leerHojaCompleta(nombreHoja) {
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${nombreHoja}`;
             
             console.log(`📥 Leyendo hoja: ${nombreHoja}`);
-            console.log(`🔗 URL: ${url}`);
             
-            try {
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const text = await response.text();
-                const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
-                const json = JSON.parse(jsonStr);
-                
-                const rows = json.table.rows || [];
-                console.log(`📊 ${nombreHoja}: ${rows.length} filas encontradas`);
-                
-                const valores = [];
-                rows.forEach((row, idx) => {
-                    const valor = row?.c?.[0]?.v;
-                    console.log(`  Fila ${idx + 1}: ${valor}`);
-                    if (valor != null) {
-                        const num = parseFloat(valor);
-                        if (!isNaN(num)) {
-                            valores.push(num);
-                        }
-                    }
-                });
-                
-                console.log(`✅ ${nombreHoja} valores finales:`, valores);
-                return valores;
-                
-            } catch (error) {
-                console.error(`❌ Error en ${nombreHoja}:`, error);
-                throw error;
-            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            
+            const text = await response.text();
+            const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
+            const json = JSON.parse(jsonStr);
+            
+            return json.table.rows || [];
         }
 
-        // Leer columnas A y B para Interes
-        async function leerInteres() {
-            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Interes`;
+        // ============================================
+        // Leer columna A simple
+        // ============================================
+        async function leerColumnaA(nombreHoja) {
+            const rows = await leerHojaCompleta(nombreHoja);
+            const valores = [];
             
-            console.log(`📥 Leyendo hoja: Interes (2 columnas)`);
-            
-            try {
-                const response = await fetch(url);
+            rows.forEach((row, idx) => {
+                const valor = row?.c?.[0]?.v;
+                console.log(`  Fila ${idx + 1}: ${valor}`);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                // Saltar encabezado si es texto
+                if (idx === 0 && isNaN(parseFloat(valor))) {
+                    console.log(`    ⏭️ Saltando encabezado`);
+                    return;
                 }
                 
-                const text = await response.text();
-                const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
-                const json = JSON.parse(jsonStr);
+                const num = parseFloat(valor);
+                if (!isNaN(num)) {
+                    valores.push(num);
+                }
+            });
+            
+            console.log(`✅ ${nombreHoja} valores finales:`, valores);
+            return valores;
+        }
+
+        // ============================================
+        // Leer Interes VERTICAL con mapeo por posición
+        // ============================================
+        async function leerInteres() {
+            console.log('📊 Leyendo Interes con mapeo por posición...');
+            
+            // Leer Dias
+            const rowsDias = await leerHojaCompleta('Dias');
+            
+            // Leer Interes
+            const rowsInteres = await leerHojaCompleta('Interes');
+            
+            const interesesObj = {};
+            const maxFilas = Math.max(rowsDias.length, rowsInteres.length);
+            
+            for (let i = 0; i < maxFilas; i++) {
+                const filaNum = i + 1;
                 
-                const rows = json.table.rows || [];
-                console.log(`📊 Interes: ${rows.length} filas encontradas`);
+                // Leer valor de Dias (columna A)
+                let diasValor = rowsDias[i]?.c?.[0]?.v;
                 
-                const interesesObj = {};
-                rows.forEach((row, idx) => {
-                    const dias = row?.c?.[0]?.v;
-                    const interes = row?.c?.[1]?.v;
-                    
-                    console.log(`  Fila ${idx + 1}: Dias=${dias}, Interes=${interes}`);
-                    
-                    if (dias != null && interes != null) {
-                        const diasNum = parseFloat(dias);
-                        const interesNum = parseFloat(interes);
-                        
-                        if (!isNaN(diasNum) && !isNaN(interesNum)) {
-                            interesesObj[diasNum] = interesNum;
-                        }
-                    }
-                });
+                // Leer valor de Interes (columna A)
+                let interesValor = rowsInteres[i]?.c?.[0]?.v;
+                const interesFormato = rowsInteres[i]?.c?.[0]?.f;
                 
-                console.log(`✅ Interes objeto final:`, interesesObj);
-                return interesesObj;
+                console.log(`  Fila ${filaNum}: Dias=${diasValor}, Interes=${interesValor}, Formato=${interesFormato}`);
                 
-            } catch (error) {
-                console.error(`❌ Error en Interes:`, error);
-                throw error;
+                // Saltar encabezados
+                if (i === 0 && (isNaN(parseFloat(diasValor)) || isNaN(parseFloat(interesValor)))) {
+                    console.log(`    ⏭️ Saltando encabezado`);
+                    continue;
+                }
+                
+                const diasNum = parseFloat(diasValor);
+                let interesNum = parseFloat(interesValor);
+                
+                if (isNaN(diasNum) || isNaN(interesNum)) {
+                    console.log(`    ⚠️ Valores inválidos`);
+                    continue;
+                }
+                
+                // Detectar formato porcentaje
+                if (interesFormato && interesFormato.includes('%')) {
+                    interesNum = interesNum * 100;
+                    console.log(`    ✅ Convertido %: ${interesValor} → ${interesNum}`);
+                } else if (interesNum > 0 && interesNum < 1) {
+                    interesNum = interesNum * 100;
+                    console.log(`    ✅ Convertido decimal: ${interesValor} → ${interesNum}`);
+                }
+                
+                interesesObj[diasNum] = interesNum;
+                console.log(`    ✅ Mapeado: ${diasNum} días → ${interesNum}%`);
             }
+            
+            console.log(`✅ Objeto de intereses final:`, interesesObj);
+            return interesesObj;
         }
 
         // Leer Banner (celda A2)
         async function leerBanner() {
-            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Banner`;
+            const rows = await leerHojaCompleta('Banner');
             
-            console.log(`📥 Leyendo hoja: Banner`);
-            
-            try {
-                const response = await fetch(url);
-                const text = await response.text();
-                const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
-                const json = JSON.parse(jsonStr);
+            if (rows.length > 1) {
+                const mensaje = rows[1]?.c?.[0]?.v || '';
+                console.log(`✅ Banner mensaje:`, mensaje);
                 
-                const rows = json.table.rows || [];
-                
-                if (rows.length > 1) {
-                    const mensaje = rows[1]?.c?.[0]?.v || '';
-                    console.log(`✅ Banner mensaje:`, mensaje);
-                    
-                    return {
-                        activo: mensaje.trim() !== '',
-                        texto: mensaje
-                    };
-                } else {
-                    return {
-                        activo: false,
-                        texto: ''
-                    };
-                }
-                
-            } catch (error) {
-                console.error(`❌ Error en Banner:`, error);
-                throw error;
+                return {
+                    activo: mensaje.trim() !== '',
+                    texto: mensaje
+                };
             }
+            
+            return {
+                activo: false,
+                texto: ''
+            };
         }
 
         async function leerDatosReales() {
@@ -223,8 +222,8 @@
                 datosDesdeSheets.capital = capital;
                 html += `<div class="success">✅ CAPITAL: ${JSON.stringify(capital)}</div>`;
                 
-                // INTERES
-                html += '<p>📊 Leyendo Interes...</p>';
+                // INTERES (mapeo por posición de fila)
+                html += '<p>📊 Leyendo Interes (mapeo por fila)...</p>';
                 const interes = await leerInteres();
                 datosDesdeSheets.interes = interes;
                 html += `<div class="success">✅ INTERES:<pre>${JSON.stringify(interes, null, 2)}</pre></div>`;
@@ -239,7 +238,7 @@
                 
             } catch (error) {
                 html += `<div class="error">❌ Error: ${error.message}</div>`;
-                html += `<div class="warning">⚠️ Verifica que las hojas "Dias", "Capital", "Interes" y "Banner" existan en Google Sheets</div>`;
+                html += `<div class="warning">⚠️ Verifica que las hojas existan con datos en columna A</div>`;
             }
             
             div.innerHTML = html;
@@ -345,82 +344,11 @@
             }
         }
 
-        // Mostrar cache al cargar
         window.addEventListener('load', () => {
-            console.log('🧪 Test iniciado - Versión DATOS REALES');
+            console.log('🧪 Test iniciado - Interes VERTICAL');
             console.log('📊 Sheet ID:', SHEET_ID);
             mostrarCache();
         });
     </script>
 </body>
 </html>
-```
-
----
-
-## 🎯 **Cómo Usar Este Test:**
-
-1. **Guarda el código** como `test-real-data.html`
-
-2. **Abre en el navegador**
-
-3. **Haz clic en "Leer Datos de Sheets"** (Paso 1)
-   - Esto leerá los datos REALES de Google Sheets
-   - Los mostrará en pantalla
-
-4. **Haz clic en "Comparar Sheets vs localStorage"** (Paso 2)
-   - Verás lado a lado lo que hay en Sheets vs lo que hay en cache
-
-5. **Haz clic en "Guardar Datos Reales en Cache"** (Paso 3)
-   - Guardará los datos REALES en localStorage
-
-6. **Haz clic en "Ver Cache"** (Paso 4)
-   - Verás exactamente qué hay guardado en localStorage
-
----
-
-## 🔍 **Este test te mostrará:**
-
-- ✅ **Qué datos están REALMENTE** en Google Sheets
-- ✅ **Qué datos están** en localStorage
-- ✅ **Si coinciden o no**
-- ✅ **Console logs** detallados de cada paso
-
----
-
-## 📋 **Checklist:**
-
-Antes de ejecutar el test, verifica en Google Sheets:
-
-**Hoja "Dias"** (Columna A):
-```
-27
-40
-54
-68
-```
-
-**Hoja "Capital"** (Columna A):
-```
-1000
-2000
-3000
-5000
-10000
-15000
-20000
-```
-
-**Hoja "Interes"** (Columnas A y B):
-```
-A     B
-27    21.5
-40    32
-54    44
-68    49.8
-```
-
-**Hoja "Banner"** (Celda A2):
-```
-A1: (vacío)
-A2: Tu mensaje del banner
