@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>TEST - Simulador Completo con Cache</title>
+    <style>
+        body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .container { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        h1 { color: #667eea; text-align: center; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.9em; }
+        .box { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 10px; border: 2px solid #e0e0e0; }
+        button { background: #667eea; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; }
+        button:hover { background: #5568d3; }
+        .success { color: #28a745; font-weight: bold; padding: 10px; background: #d4edda; border-radius: 5px; margin: 5px 0; }
+        .error { color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px; margin: 5px 0; }
+        .warning { color: #856404; padding: 10px; background: #fff3cd; border-radius: 5px; margin: 5px 0; }
+        .info { color: #004085; padding: 10px; background: #cce5ff; border-radius: 5px; margin: 5px 0; }
+        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; }
+        .data-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .data-box { background: white; padding: 15px; border-radius: 8px; border: 2px solid #667eea; }
+        .data-box h4 { color: #667eea; margin-bottom: 10px; }
+        select, input[type="number"] { width: 100%; padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 1em; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================ -->
+    <!-- CALCULADOR CON STORAGE                       -->
+    <!-- ============================================ -->
+    <div class="container">
+        <h1>🧮 Calculador desde Cache</h1>
+        <p class="subtitle">Usa SOLO datos guardados en localStorage — funciona offline</p>
+
+        <div class="box">
+            <h2>🧮 Paso 5: Calculador - Verificar Datos del Cache</h2>
+            <p class="info">📋 Este calculador usa SOLO los datos guardados en localStorage</p>
+
+            <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 10px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #667eea; margin-bottom: 5px;">
+                        📅 Selecciona Plazo:
+                    </label>
+                    <select id="calcDias">
+                        <option value="">-- Selecciona días --</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; color: #667eea; margin-bottom: 5px;">
+                        💰 Capital:
+                    </label>
+                    <input type="number" id="calcCapital" placeholder="Ingresa el capital"
+                           value="5000" min="1000" max="50000" step="100">
+                </div>
+
+                <button onclick="calcularDesdeCache()" style="width: 100%; background: #28a745; font-size: 1.1em; padding: 15px;">
+                    🧮 CALCULAR DESDE CACHE
+                </button>
+            </div>
+
+            <div id="resultadoCalculo"></div>
+        </div>
+    </div>
+    <!-- FIN CALCULADOR CON STORAGE -->
+
+
+    <!-- ============================================ -->
+    <!-- TEST PRINCIPAL                               -->
+    <!-- ============================================ -->
+    <div class="container">
+        <h1>🔬 TEST - Con Normalización Total</h1>
+        <p class="subtitle">✅ Coma (,) se convierte automáticamente a punto (.)</p>
+
+        <div class="box">
+            <h2>📊 Paso 1: Leer Datos de Google Sheets</h2>
+            <button onclick="leerDatosReales()">🔍 Leer Datos con Normalización</button>
+            <div id="datosReales"></div>
+        </div>
+
+        <div class="box">
+            <h2>💾 Paso 2: Comparar con localStorage</h2>
+            <button onclick="compararDatos()">🔄 Comparar Sheets vs Cache</button>
+            <div id="comparacion"></div>
+        </div>
+
+        <div class="box">
+            <h2>✅ Paso 3: Guardar en localStorage</h2>
+            <button onclick="guardarEnCache()">💾 Guardar en Cache</button>
+            <button onclick="limpiarCache()" style="background: #dc3545;">🗑️ Limpiar Cache</button>
+            <div id="guardadoStatus"></div>
+        </div>
+
+        <div class="box">
+            <h2>📱 Paso 4: Ver localStorage</h2>
+            <button onclick="mostrarCache()">👁️ Ver Cache Actual</button>
+            <div id="cacheActual"></div>
+        </div>
+    </div>
+
+
+    <script>
+        const SHEET_ID = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+
+        // Variable en memoria: guarda los últimos datos traídos desde Sheets
+        let datosDesdeSheets = {
+            dias: null,
+            capital: null,
+            interes: null,
+            banner: null
+        };
+
+        // ============================================
+        // UTILIDAD: FORMATEAR MONEDA
+        // ============================================
+        function formatMoney(num) {
+            return '$' + num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        }
+
+        // ============================================
+        // 1. NORMALIZACIÓN
+        // ============================================
+        function normalizarNumeroSheets(valor) {
+            if (typeof valor === 'number') {
+                return isFinite(valor) ? valor : NaN;
+            }
+            if (valor == null || valor === '') return NaN;
+
+            let texto = String(valor).trim();
+            texto = texto.replace(/%/g, '');
+            texto = texto.replace(/,/g, '.');
+
+            const partes = texto.split('.');
+            if (partes.length > 2) {
+                texto = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
+            }
+
+            const numero = parseFloat(texto);
+            return isNaN(numero) || !isFinite(numero) ? NaN : numero;
+        }
+
+        // ============================================
+        // 2. CACHE: guardar y leer desde localStorage
+        // ============================================
+        function saveToCache(key, data) {
+            const cacheData = {
+                data: data,
+                timestamp: new Date().getTime()
+            };
+            localStorage.setItem(`simulador_${key}`, JSON.stringify(cacheData));
+            console.log(`✅ Guardado en cache: simulador_${key}`, data);
+        }
+
+        function getFromCache(key) {
+            try {
+                const cached = localStorage.getItem(`simulador_${key}`);
+                if (!cached) return null;
+                const cacheData = JSON.parse(cached);
+                return cacheData.data;
+            } catch (error) {
+                console.error(`❌ Error al leer cache: ${key}`, error);
+                return null;
+            }
+        }
+
+        // ============================================
+        // 3. HELPERS SHEETS
+        // ============================================
+        async function leerHojaCompleta(nombreHoja) {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${nombreHoja}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const text = await response.text();
+            const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
+            const json = JSON.parse(jsonStr);
+            return json.table.rows || [];
+        }
+
+        async function leerColumnaA(nombreHoja) {
+            const rows = await leerHojaCompleta(nombreHoja);
+            const valores = [];
+            rows.forEach((row, idx) => {
+                const valorRAW = row?.c?.[0]?.v;
+                if (idx === 0 && isNaN(parseFloat(valorRAW))) return; // saltar encabezado
+                const num = normalizarNumeroSheets(valorRAW);
+                if (!isNaN(num)) valores.push(num);
+            });
+            return valores;
+        }
+
+        async function leerInteres() {
+            const rows = await leerHojaCompleta('Interes');
+            const valores = [];
+
+            rows.forEach((row, idx) => {
+                const valorRAW = row?.c?.[0]?.v;
+                const formato = row?.c?.[0]?.f;
+                if (idx === 0 && isNaN(parseFloat(valorRAW))) return;
+
+                let num = normalizarNumeroSheets(valorRAW);
+                if (isNaN(num)) return;
+                if (num > 1000) return; // rechazar fechas
+
+                if (formato && formato.includes('%')) {
+                    num = num * 100;
+                } else if (num > 0 && num < 1) {
+                    num = num * 100;
+                }
+
+                if (num < 0 || num > 100) return;
+                valores.push(num);
+            });
+
+            // Mapear dias → interes
+            const diasValores = await leerColumnaA('Dias');
+            const interesesObj = {};
+            const minLength = Math.min(diasValores.length, valores.length);
+            for (let i = 0; i < minLength; i++) {
+                interesesObj[diasValores[i]] = valores[i];
+            }
+            return interesesObj;
+        }
+
+        async function leerBanner() {
+            const rows = await leerHojaCompleta('Banner');
+            if (rows.length > 1) {
+                const mensaje = rows[1]?.c?.[0]?.v || '';
+                return { activo: mensaje.trim() !== '', texto: mensaje };
+            }
+            return { activo: false, texto: '' };
+        }
+
+        // ============================================
+        // 4. POBLAR SELECT DE DÍAS DESDE CACHE
+        // ============================================
+        function poblarSelectDias() {
+            const select = document.getElementById('calcDias');
+            const diasCache = getFromCache('dias');
+
+            // Limpiar opciones previas excepto la primera
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+
+            if (!diasCache || diasCache.length === 0) {
+                console.warn('⚠️ No hay días en cache para poblar el select');
+                return;
+            }
+
+            diasCache.forEach(dia => {
+                const option = document.createElement('option');
+                option.value = dia;
+                option.textContent = `${dia} días`;
+                select.appendChild(option);
+            });
+
+            console.log('✅ Select poblado con días del cache:', diasCache);
+        }
+
+        // ============================================
+        // 5. CALCULAR DESDE CACHE  ← FUNCIÓN PRINCIPAL
+        // ============================================
+        function calcularDesdeCache() {
+            const dias = parseInt(document.getElementById('calcDias').value);
+            const capital = parseFloat(document.getElementById('calcCapital').value);
+            const resultDiv = document.getElementById('resultadoCalculo');
+
+            console.log('\n========================================');
+            console.log('CALCULANDO DESDE CACHE');
+            console.log('========================================');
+
+            // --- VALIDAR INPUTS DEL USUARIO ---
+            if (!dias) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Selecciona un plazo</div>';
+                return;
+            }
+            if (!capital || capital < 1000 || capital > 50000) {
+                resultDiv.innerHTML = '<div class="warning">⚠️ Ingresa un capital válido ($1,000 - $50,000)</div>';
+                return;
+            }
+
+            console.log('Input Usuario:', { dias, capital });
+
+            // --- LEER DESDE LOCALSTORAGE ---
+            const diasCache    = getFromCache('dias');
+            const capitalCache = getFromCache('capital');
+            const interesCache = getFromCache('interes');
+            const bannerCache  = getFromCache('banner_config');
+
+            console.log('Datos en localStorage:', { diasCache, capitalCache, interesCache, bannerCache });
+
+            // --- VALIDAR EXISTENCIA DE DATOS EN CACHE ---
+            if (!diasCache || diasCache.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERROR: No hay días en cache</strong><br>
+                        <strong>localStorage["simulador_dias"]:</strong> ${diasCache ? 'Vacío' : 'No existe'}<br><br>
+                        <strong>Solución:</strong>
+                        <ol style="margin:10px 0;padding-left:20px;">
+                            <li>Paso 1: "Leer Datos de Sheets"</li>
+                            <li>Paso 3: "Guardar en Cache"</li>
+                            <li>Regresa aquí y calcula</li>
+                        </ol>
+                    </div>`;
+                return;
+            }
+
+            if (!capitalCache || capitalCache.length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERROR: No hay capitales en cache</strong><br>
+                        <strong>localStorage["simulador_capital"]:</strong> ${capitalCache ? 'Vacío' : 'No existe'}
+                    </div>`;
+                return;
+            }
+
+            if (!interesCache || Object.keys(interesCache).length === 0) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERROR: No hay tasas de interés en cache</strong><br>
+                        <strong>localStorage["simulador_interes"]:</strong> ${interesCache ? 'Vacío' : 'No existe'}
+                    </div>`;
+                return;
+            }
+
+            // --- VERIFICAR QUE EXISTA TASA PARA LOS DÍAS SELECCIONADOS ---
+            if (!(dias in interesCache)) {
+                const diasDisponibles = Object.keys(interesCache).join(', ');
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERROR: No hay tasa para ${dias} días</strong><br><br>
+                        <strong>Días disponibles:</strong> ${diasDisponibles}<br>
+                        <pre>${JSON.stringify(interesCache, null, 2)}</pre>
+                    </div>`;
+                console.error(`❌ No existe interés para ${dias} días`);
+                return;
+            }
+
+            // ============================================
+            // ✅ CÁLCULO FINAL CON DATOS DEL CACHE
+            // ============================================
+            const interesPorc  = interesCache[dias];          // tasa % del cache
+            const interesTotal = capital * (interesPorc / 100); // interés en $
+            const totalPrestar = capital + interesTotal;        // monto total a cobrar
+            const pagoDiario   = totalPrestar / dias;           // cuota diaria
+
+            console.log('✅ CÁLCULO:', { interesPorc, interesTotal, totalPrestar, pagoDiario });
+
+            // --- MOSTRAR RESULTADO ---
+            resultDiv.innerHTML = `
+                <div style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);
+                            padding:25px;border-radius:15px;color:white;margin-top:20px;
+                            box-shadow:0 10px 30px rgba(40,167,69,0.4);">
+
+                    <h3 style="text-align:center;margin-bottom:20px;font-size:1.5em;">
+                        ✅ CÁLCULO EXITOSO DESDE CACHE
+                    </h3>
+
+                    <div style="background:rgba(255,255,255,0.15);padding:20px;border-radius:10px;">
+                        <div style="display:grid;gap:12px;">
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
+                                <span>💰 Capital Solicitado:</span>
+                                <strong style="font-size:1.2em;">${formatMoney(capital)}</strong>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
+                                <span>📈 Tasa de Interés (cache):</span>
+                                <strong style="font-size:1.2em;">${interesPorc}%</strong>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
+                                <span>📊 Interés Total:</span>
+                                <strong style="font-size:1.2em;">${formatMoney(interesTotal)}</strong>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
+                                <span>💵 Total a Pagar:</span>
+                                <strong style="font-size:1.3em;color:#FFD700;">${formatMoney(totalPrestar)}</strong>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
+                                <span>📅 Plazo:</span>
+                                <strong style="font-size:1.2em;">${dias} días</strong>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;padding:10px 0;">
+                                <span>💳 Pago Diario:</span>
+                                <strong style="font-size:1.3em;color:#90EE90;">${formatMoney(pagoDiario)}</strong>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px;padding:15px;background:rgba(255,255,255,0.2);border-radius:10px;font-size:0.95em;line-height:1.6;">
+                        <strong>📦 Fuente de Datos (localStorage):</strong><br>
+                        ✅ simulador_dias: ${diasCache.length} valores<br>
+                        ✅ simulador_capital: ${capitalCache.length} valores<br>
+                        ✅ simulador_interes: ${Object.keys(interesCache).length} tasas<br>
+                        ✅ Tasa usada: interesCache[${dias}] = ${interesPorc}%
+                    </div>
+                </div>
+
+                <div class="success" style="margin-top:15px;">
+                    <strong>🎉 PROCESO COMPLETO EXITOSO</strong><br><br>
+                    <ol style="margin:10px 0;padding-left:20px;line-height:1.8;">
+                        <li>✅ Datos leídos desde Google Sheets</li>
+                        <li>✅ Normalizados (coma → punto automático)</li>
+                        <li>✅ Guardados en localStorage</li>
+                        <li>✅ Cálculo realizado SOLO con datos del cache</li>
+                    </ol>
+                </div>
+
+                <div class="info" style="margin-top:15px;">
+                    <strong>💡 Prueba Offline:</strong><br>
+                    F12 → Network → Activar "Offline" → Recargar la página → sigue funcionando 🚀
+                </div>
+            `;
+        }
+
+        // ============================================
+        // 6. LEER DATOS REALES DESDE SHEETS
+        // ============================================
+        async function leerDatosReales() {
+            const div = document.getElementById('datosReales');
+            div.innerHTML = '<p class="info">⏳ Leyendo datos con normalización automática...</p>';
+
+            let html = '<h3>📊 Datos REALES:</h3>';
+            html += '<p class="info">✅ Comas (,) convertidas automáticamente a punto (.)</p>';
+
+            try {
+                html += '<p>📅 Leyendo Dias...</p>';
+                const dias = await leerColumnaA('Dias');
+                datosDesdeSheets.dias = dias;
+                html += `<div class="success">✅ DIAS: ${JSON.stringify(dias)}</div>`;
+
+                html += '<p>💰 Leyendo Capital...</p>';
+                const capital = await leerColumnaA('Capital');
+                datosDesdeSheets.capital = capital;
+                html += `<div class="success">✅ CAPITAL: ${JSON.stringify(capital)}</div>`;
+
+                html += '<p>📊 Leyendo Interes...</p>';
+                const interes = await leerInteres();
+                datosDesdeSheets.interes = interes;
+                html += `<div class="success">✅ INTERES:<pre>${JSON.stringify(interes, null, 2)}</pre></div>`;
+
+                html += '<p>🎌 Leyendo Banner...</p>';
+                const banner = await leerBanner();
+                datosDesdeSheets.banner = banner;
+                html += `<div class="success">✅ BANNER: "${banner.texto}"</div>`;
+
+                html += '<div class="success"><strong>🎉 Todos los datos normalizados correctamente</strong></div>';
+                html += '<div class="info">💡 Abre la consola (F12) para ver el proceso detallado</div>';
+
+            } catch (error) {
+                html += `<div class="error">❌ Error: ${error.message}</div>`;
+                console.error('Error completo:', error);
+            }
+
+            div.innerHTML = html;
+        }
+
+        // ============================================
+        // 7. COMPARAR SHEETS VS CACHE
+        // ============================================
+        async function compararDatos() {
+            const div = document.getElementById('comparacion');
+
+            if (!datosDesdeSheets.dias) {
+                div.innerHTML = '<div class="warning">⚠️ Primero lee los datos (Paso 1)</div>';
+                return;
+            }
+
+            const diasCache    = getFromCache('dias');
+            const capitalCache = getFromCache('capital');
+            const interesCache = getFromCache('interes');
+            const bannerCache  = getFromCache('banner_config');
+
+            let html = '<h3>🔄 Comparación:</h3><div class="data-compare">';
+
+            html += '<div class="data-box"><h4>📅 DIAS</h4>';
+            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.dias, null, 2) + '</pre>';
+            html += '<strong>localStorage:</strong><pre>' + (diasCache ? JSON.stringify(diasCache, null, 2) : '❌ Vacío') + '</pre></div>';
+
+            html += '<div class="data-box"><h4>💰 CAPITAL</h4>';
+            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.capital, null, 2) + '</pre>';
+            html += '<strong>localStorage:</strong><pre>' + (capitalCache ? JSON.stringify(capitalCache, null, 2) : '❌ Vacío') + '</pre></div>';
+
+            html += '<div class="data-box"><h4>📊 INTERES</h4>';
+            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.interes, null, 2) + '</pre>';
+            html += '<strong>localStorage:</strong><pre>' + (interesCache ? JSON.stringify(interesCache, null, 2) : '❌ Vacío') + '</pre></div>';
+
+            html += '<div class="data-box"><h4>🎌 BANNER</h4>';
+            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.banner, null, 2) + '</pre>';
+            html += '<strong>localStorage:</strong><pre>' + (bannerCache ? JSON.stringify(bannerCache, null, 2) : '❌ Vacío') + '</pre></div>';
+
+            html += '</div>';
+            div.innerHTML = html;
+        }
+
+        // ============================================
+        // 8. GUARDAR EN CACHE → re-poblar select
+        // ============================================
+        async function guardarEnCache() {
+            const div = document.getElementById('guardadoStatus');
+
+            if (!datosDesdeSheets.dias) {
+                div.innerHTML = '<div class="error">❌ Primero lee los datos (Paso 1)</div>';
+                return;
+            }
+
+            div.innerHTML = '<p>💾 Guardando...</p>';
+
+            try {
+                saveToCache('dias',         datosDesdeSheets.dias);
+                saveToCache('capital',      datosDesdeSheets.capital);
+                saveToCache('interes',      datosDesdeSheets.interes);
+                saveToCache('banner_config', datosDesdeSheets.banner);
+
+                div.innerHTML = '<div class="success">✅ Datos normalizados guardados en localStorage</div>';
+
+                // ✅ Actualizar el select del calculador con los nuevos días
+                poblarSelectDias();
+
+                mostrarCache();
+
+            } catch (error) {
+                div.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // ============================================
+        // 9. MOSTRAR CACHE
+        // ============================================
+        function mostrarCache() {
+            const div = document.getElementById('cacheActual');
+            const dias    = getFromCache('dias');
+            const capital = getFromCache('capital');
+            const interes = getFromCache('interes');
+            const banner  = getFromCache('banner_config');
+
+            div.innerHTML = `
+                <h3>📱 localStorage Actual:</h3>
+                <pre>DIAS:\n${dias    ? JSON.stringify(dias, null, 2)    : '❌ Vacío'}\n\n` +
+                    `CAPITAL:\n${capital ? JSON.stringify(capital, null, 2) : '❌ Vacío'}\n\n` +
+                    `INTERES:\n${interes ? JSON.stringify(interes, null, 2) : '❌ Vacío'}\n\n` +
+                    `BANNER:\n${banner  ? JSON.stringify(banner, null, 2)  : '❌ Vacío'}</pre>`;
+        }
+
+        // ============================================
+        // 10. LIMPIAR CACHE
+        // ============================================
+        function limpiarCache() {
+            if (confirm('¿Limpiar TODO el localStorage?')) {
+                localStorage.removeItem('simulador_dias');
+                localStorage.removeItem('simulador_capital');
+                localStorage.removeItem('simulador_interes');
+                localStorage.removeItem('simulador_banner_config');
+                alert('✅ Cache limpiado');
+                mostrarCache();
+                // Reset select
+                const select = document.getElementById('calcDias');
+                while (select.options.length > 1) select.remove(1);
+            }
+        }
+
+        // ============================================
+        // 11. INICIALIZACIÓN
+        // ============================================
+        window.addEventListener('load', () => {
+            console.log('🧪 Simulador iniciado — NORMALIZACIÓN TOTAL');
+            console.log('📊 Sheet ID:', SHEET_ID);
+            console.log('✅ Coma (,) → Punto (.) automático');
+            mostrarCache();
+            poblarSelectDias(); // Si ya hay cache, el select se llena automáticamente
+        });
+    </script>
+</body>
+</html>
