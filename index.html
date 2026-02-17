@@ -2,17 +2,19 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>TEST - Datos REALES de Google Sheets</title>
+    <title>TEST - Normalización Completa</title>
     <style>
         body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .container { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         h1 { color: #667eea; text-align: center; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.9em; }
         .box { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 10px; border: 2px solid #e0e0e0; }
         button { background: #667eea; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; }
         button:hover { background: #5568d3; }
         .success { color: #28a745; font-weight: bold; padding: 10px; background: #d4edda; border-radius: 5px; margin: 5px 0; }
         .error { color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px; margin: 5px 0; }
         .warning { color: #856404; padding: 10px; background: #fff3cd; border-radius: 5px; margin: 5px 0; }
+        .info { color: #004085; padding: 10px; background: #cce5ff; border-radius: 5px; margin: 5px 0; }
         pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; }
         .data-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
         .data-box { background: white; padding: 15px; border-radius: 8px; border: 2px solid #667eea; }
@@ -21,30 +23,31 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔬 TEST - Leer Datos REALES de Google Sheets</h1>
+        <h1>🔬 TEST - Con Normalización Total</h1>
+        <p class="subtitle">✅ Coma (,) se convierte automáticamente a punto (.)</p>
         
         <div class="box">
-            <h2>📊 Paso 1: Ver Datos en Google Sheets</h2>
-            <button onclick="leerDatosReales()">🔍 Leer Datos de Sheets</button>
+            <h2>📊 Paso 1: Leer Datos de Google Sheets</h2>
+            <button onclick="leerDatosReales()">🔍 Leer Datos con Normalización</button>
             <div id="datosReales"></div>
         </div>
 
         <div class="box">
             <h2>💾 Paso 2: Comparar con localStorage</h2>
-            <button onclick="compararDatos()">🔄 Comparar Sheets vs localStorage</button>
+            <button onclick="compararDatos()">🔄 Comparar Sheets vs Cache</button>
             <div id="comparacion"></div>
         </div>
 
         <div class="box">
             <h2>✅ Paso 3: Guardar en localStorage</h2>
-            <button onclick="guardarEnCache()">💾 Guardar Datos Reales en Cache</button>
+            <button onclick="guardarEnCache()">💾 Guardar en Cache</button>
             <button onclick="limpiarCache()" style="background: #dc3545;">🗑️ Limpiar Cache</button>
             <div id="guardadoStatus"></div>
         </div>
 
         <div class="box">
-            <h2>📱 Paso 4: Ver localStorage Actual</h2>
-            <button onclick="mostrarCache()">👁️ Ver Cache</button>
+            <h2>📱 Paso 4: Ver localStorage</h2>
+            <button onclick="mostrarCache()">👁️ Ver Cache Actual</button>
             <div id="cacheActual"></div>
         </div>
     </div>
@@ -59,6 +62,44 @@
             banner: null
         };
 
+        // ============================================
+        // 1. FUNCIÓN DE NORMALIZACIÓN
+        // ============================================
+        function normalizarNumeroSheets(valor) {
+            // Si ya es número, devolverlo directo
+            if (typeof valor === 'number') {
+                return isFinite(valor) ? valor : NaN;
+            }
+            
+            // Si es null, undefined o string vacío
+            if (valor == null || valor === '') {
+                return NaN;
+            }
+            
+            // Convertir a string y limpiar espacios
+            let texto = String(valor).trim();
+            
+            // Eliminar símbolo % si existe
+            texto = texto.replace(/%/g, '');
+            
+            // ✅ CONVERTIR TODAS LAS COMAS A PUNTO
+            texto = texto.replace(/,/g, '.');
+            
+            // Si hay múltiples puntos, mantener solo el último como decimal
+            const partes = texto.split('.');
+            if (partes.length > 2) {
+                texto = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
+            }
+            
+            const numero = parseFloat(texto);
+            
+            // Validar que sea número válido y finito
+            return isNaN(numero) || !isFinite(numero) ? NaN : numero;
+        }
+
+        // ============================================
+        // 2. FUNCIONES DE CACHE
+        // ============================================
         function saveToCache(key, data) {
             const cacheData = {
                 data: data,
@@ -81,7 +122,7 @@
         }
 
         // ============================================
-        // Leer hoja completa
+        // 3. LEER HOJA COMPLETA
         // ============================================
         async function leerHojaCompleta(nombreHoja) {
             const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${nombreHoja}`;
@@ -99,102 +140,131 @@
         }
 
         // ============================================
-        // Leer columna A simple
+        // 4. LEER COLUMNA A - Con normalización
         // ============================================
         async function leerColumnaA(nombreHoja) {
             const rows = await leerHojaCompleta(nombreHoja);
             const valores = [];
             
+            console.log(`\n=== ${nombreHoja} ===`);
+            
             rows.forEach((row, idx) => {
-                const valor = row?.c?.[0]?.v;
-                console.log(`  Fila ${idx + 1}: ${valor}`);
+                const valorRAW = row?.c?.[0]?.v;
+                
+                console.log(`  A${idx + 1}: ${valorRAW} (tipo: ${typeof valorRAW})`);
                 
                 // Saltar encabezado si es texto
-                if (idx === 0 && isNaN(parseFloat(valor))) {
-                    console.log(`    ⏭️ Saltando encabezado`);
+                if (idx === 0 && isNaN(parseFloat(valorRAW))) {
+                    console.log(`    ⏭️ ENCABEZADO`);
                     return;
                 }
                 
-                const num = parseFloat(valor);
+                // ✅ NORMALIZAR
+                const num = normalizarNumeroSheets(valorRAW);
+                
                 if (!isNaN(num)) {
                     valores.push(num);
+                    console.log(`    ✅ ${num}`);
                 }
             });
             
-            console.log(`✅ ${nombreHoja} valores finales:`, valores);
+            console.log(`✅ ${nombreHoja}:`, valores);
             return valores;
         }
 
         // ============================================
-        // Leer Interes VERTICAL con mapeo por posición
+        // 5. LEER INTERES - Con normalización y mapeo
         // ============================================
-       // ============================================
-// Leer Interes IGUAL que Dias y Capital
-// ============================================
-async function leerInteres() {
-    const rows = await leerHojaCompleta('Interes');
-    const valores = [];
-    
-    rows.forEach((row, idx) => {
-        const valor = row?.c?.[0]?.v;
-        const formato = row?.c?.[0]?.f;
-        
-        console.log(`  Fila ${idx + 1}: ${valor} (formato: ${formato})`);
-        
-        // Saltar encabezado si es texto
-        if (idx === 0 && isNaN(parseFloat(valor))) {
-            console.log(`    ⏭️ Saltando encabezado`);
-            return;
-        }
-        
-        let num = parseFloat(valor);
-        
-        if (!isNaN(num)) {
-            // Detectar formato porcentaje
-            if (formato && formato.includes('%')) {
-                num = num * 100;
-                console.log(`    ✅ Convertido %: ${valor} → ${num}`);
-            } else if (num > 0 && num < 1) {
-                num = num * 100;
-                console.log(`    ✅ Convertido decimal: ${valor} → ${num}`);
+        async function leerInteres() {
+            const rows = await leerHojaCompleta('Interes');
+            const valores = [];
+            
+            console.log('\n========================================');
+            console.log('INTERES CON NORMALIZACIÓN');
+            console.log('========================================');
+            
+            rows.forEach((row, idx) => {
+                const valorRAW = row?.c?.[0]?.v;
+                const formato = row?.c?.[0]?.f;
+                
+                console.log(`\nA${idx + 1}: ${valorRAW} (formato: ${formato})`);
+                
+                // Saltar encabezado
+                if (idx === 0 && isNaN(parseFloat(valorRAW))) {
+                    console.log(`  ⏭️ ENCABEZADO`);
+                    return;
+                }
+                
+                // ✅ NORMALIZAR
+                let num = normalizarNumeroSheets(valorRAW);
+                
+                if (isNaN(num)) {
+                    console.log(`  ❌ No válido`);
+                    return;
+                }
+                
+                console.log(`  ✅ Normalizado: ${num}`);
+                
+                // Rechazar fechas
+                if (num > 1000) {
+                    console.log(`  ❌ FECHA rechazada`);
+                    return;
+                }
+                
+                // Detectar formato %
+                if (formato && formato.includes('%')) {
+                    num = num * 100;
+                    console.log(`  ✅ Convertido %: ${num}`);
+                } else if (num > 0 && num < 1) {
+                    num = num * 100;
+                    console.log(`  ✅ Convertido decimal: ${num}`);
+                }
+                
+                // Validar rango
+                if (num < 0 || num > 100) {
+                    console.log(`  ❌ Fuera de rango`);
+                    return;
+                }
+                
+                valores.push(num);
+                console.log(`  ✅ AGREGADO: ${num}`);
+            });
+            
+            console.log('\n✅ Array Interes:', valores);
+            
+            // Mapeo con Dias
+            const diasRows = await leerHojaCompleta('Dias');
+            const diasValores = [];
+            
+            diasRows.forEach((row, idx) => {
+                const valorRAW = row?.c?.[0]?.v;
+                if (idx === 0 && isNaN(parseFloat(valorRAW))) return;
+                const num = normalizarNumeroSheets(valorRAW);
+                if (!isNaN(num)) diasValores.push(num);
+            });
+            
+            const interesesObj = {};
+            const minLength = Math.min(diasValores.length, valores.length);
+            
+            for (let i = 0; i < minLength; i++) {
+                interesesObj[diasValores[i]] = valores[i];
             }
             
-            valores.push(num);
+            console.log('✅ Objeto mapeado:', interesesObj);
+            console.log('========================================\n');
+            
+            return interesesObj;
         }
-    });
-    
-    console.log(`✅ Interes valores finales:`, valores);
-    
-    // AHORA hacer el mapeo con Dias
-    const diasRows = await leerHojaCompleta('Dias');
-    const diasValores = [];
-    
-    diasRows.forEach((row, idx) => {
-        const valor = row?.c?.[0]?.v;
-        if (idx === 0 && isNaN(parseFloat(valor))) return;
-        const num = parseFloat(valor);
-        if (!isNaN(num)) diasValores.push(num);
-    });
-    
-    // Crear objeto mapeado
-    const interesesObj = {};
-    const minLength = Math.min(diasValores.length, valores.length);
-    
-    for (let i = 0; i < minLength; i++) {
-        interesesObj[diasValores[i]] = valores[i];
-    }
-    
-    console.log(`✅ Objeto mapeado:`, interesesObj);
-    return interesesObj;
-}
 
-        // Leer Banner (celda A2)
+        // ============================================
+        // 6. LEER BANNER
+        // ============================================
         async function leerBanner() {
             const rows = await leerHojaCompleta('Banner');
             
             if (rows.length > 1) {
                 const mensaje = rows[1]?.c?.[0]?.v || '';
-                console.log(`✅ Banner mensaje:`, mensaje);
+                console.log(`✅ Banner: "${mensaje}"`);
                 
                 return {
                     activo: mensaje.trim() !== '',
@@ -208,11 +278,15 @@ async function leerInteres() {
             };
         }
 
+        // ============================================
+        // 7. LEER TODOS LOS DATOS
+        // ============================================
         async function leerDatosReales() {
             const div = document.getElementById('datosReales');
-            div.innerHTML = '<p>⏳ Leyendo datos de Google Sheets...</p>';
+            div.innerHTML = '<p class="info">⏳ Leyendo datos con normalización automática...</p>';
             
-            let html = '<h3>📊 Datos REALES leídos de Google Sheets:</h3>';
+            let html = '<h3>📊 Datos REALES:</h3>';
+            html += '<p class="info">✅ Comas (,) convertidas automáticamente a punto (.)</p>';
             
             try {
                 // DIAS
@@ -227,8 +301,8 @@ async function leerInteres() {
                 datosDesdeSheets.capital = capital;
                 html += `<div class="success">✅ CAPITAL: ${JSON.stringify(capital)}</div>`;
                 
-                // INTERES (mapeo por posición de fila)
-                html += '<p>📊 Leyendo Interes (mapeo por fila)...</p>';
+                // INTERES
+                html += '<p>📊 Leyendo Interes...</p>';
                 const interes = await leerInteres();
                 datosDesdeSheets.interes = interes;
                 html += `<div class="success">✅ INTERES:<pre>${JSON.stringify(interes, null, 2)}</pre></div>`;
@@ -239,21 +313,25 @@ async function leerInteres() {
                 datosDesdeSheets.banner = banner;
                 html += `<div class="success">✅ BANNER: "${banner.texto}"</div>`;
                 
-                html += '<div class="success"><strong>🎉 Todos los datos leídos correctamente</strong></div>';
+                html += '<div class="success"><strong>🎉 Todos los datos normalizados correctamente</strong></div>';
+                html += '<div class="info">💡 Abre la consola (F12) para ver el proceso detallado</div>';
                 
             } catch (error) {
                 html += `<div class="error">❌ Error: ${error.message}</div>`;
-                html += `<div class="warning">⚠️ Verifica que las hojas existan con datos en columna A</div>`;
+                console.error('Error completo:', error);
             }
             
             div.innerHTML = html;
         }
 
+        // ============================================
+        // 8. COMPARAR DATOS
+        // ============================================
         async function compararDatos() {
             const div = document.getElementById('comparacion');
             
             if (!datosDesdeSheets.dias) {
-                div.innerHTML = '<div class="warning">⚠️ Primero lee los datos de Sheets (Paso 1)</div>';
+                div.innerHTML = '<div class="warning">⚠️ Primero lee los datos (Paso 1)</div>';
                 return;
             }
             
@@ -297,15 +375,18 @@ async function leerInteres() {
             div.innerHTML = html;
         }
 
+        // ============================================
+        // 9. GUARDAR EN CACHE
+        // ============================================
         async function guardarEnCache() {
             const div = document.getElementById('guardadoStatus');
             
             if (!datosDesdeSheets.dias) {
-                div.innerHTML = '<div class="error">❌ Primero lee los datos de Sheets (Paso 1)</div>';
+                div.innerHTML = '<div class="error">❌ Primero lee los datos (Paso 1)</div>';
                 return;
             }
             
-            div.innerHTML = '<p>💾 Guardando en localStorage...</p>';
+            div.innerHTML = '<p>💾 Guardando...</p>';
             
             try {
                 saveToCache('dias', datosDesdeSheets.dias);
@@ -313,14 +394,17 @@ async function leerInteres() {
                 saveToCache('interes', datosDesdeSheets.interes);
                 saveToCache('banner_config', datosDesdeSheets.banner);
                 
-                div.innerHTML = '<div class="success">✅ Todos los datos guardados en localStorage</div>';
+                div.innerHTML = '<div class="success">✅ Datos normalizados guardados en localStorage</div>';
                 mostrarCache();
                 
             } catch (error) {
-                div.innerHTML = `<div class="error">❌ Error al guardar: ${error.message}</div>`;
+                div.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
             }
         }
 
+        // ============================================
+        // 10. MOSTRAR CACHE
+        // ============================================
         function mostrarCache() {
             const div = document.getElementById('cacheActual');
             
@@ -338,20 +422,27 @@ async function leerInteres() {
             `;
         }
 
+        // ============================================
+        // 11. LIMPIAR CACHE
+        // ============================================
         function limpiarCache() {
-            if (confirm('¿Estás seguro de limpiar TODO el localStorage?')) {
+            if (confirm('¿Limpiar TODO el localStorage?')) {
                 localStorage.removeItem('simulador_dias');
                 localStorage.removeItem('simulador_capital');
                 localStorage.removeItem('simulador_interes');
                 localStorage.removeItem('simulador_banner_config');
-                alert('✅ localStorage limpiado');
+                alert('✅ Cache limpiado');
                 mostrarCache();
             }
         }
 
+        // ============================================
+        // 12. INICIALIZACIÓN
+        // ============================================
         window.addEventListener('load', () => {
-            console.log('🧪 Test iniciado - Interes VERTICAL');
+            console.log('🧪 Test iniciado - NORMALIZACIÓN TOTAL');
             console.log('📊 Sheet ID:', SHEET_ID);
+            console.log('✅ Coma (,) → Punto (.) automático');
             mostrarCache();
         });
     </script>
