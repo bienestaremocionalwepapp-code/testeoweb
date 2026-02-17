@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SimPréstamo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b10; --surf:#0f1319; --card:#141a24; --card2:#19202e;
+  --b1:#1c2535; --b2:#243047;
+  --acc:#00e5b0; --acc2:#00b88d;
+  --blue:#3b82f6; --gold:#f59e0b; --red:#ef4444;
+  --txt:#dce8f5; --mut:#4d617d; --soft:#7a92b0;
+  --r:14px; --rs:9px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);color:var(--txt);
+  min-height:100dvh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 50% at 88% 4%,  rgba(0,229,176,.07) 0%,transparent 65%),
+    radial-gradient(ellipse 50% 60% at 4%  96%, rgba(59,130,246,.05) 0%,transparent 65%);
+}
+
+/* ══ LAYOUT ══ */
+.app{
+  position:relative;z-index:1;
+  max-width:430px;margin:0 auto;
+  padding:0 16px 60px;
+}
+
+/* ══ HEADER ══ */
+.hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 0 8px;
+}
+.logo{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:1.28rem;letter-spacing:-.03em;
+}
+.logo em{color:var(--acc);font-style:normal}
+
+/* status dot — discreta, arriba derecha */
+.sdot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--mut);
+  transition:background .4s;
+}
+.sdot.ok   {background:var(--acc)}
+.sdot.off  {background:var(--gold)}
+.sdot.busy {background:var(--blue);animation:pulse .9s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* sync strip — 2px debajo del header, invisible hasta sincronizar */
+.sync-strip{
+  height:2px;border-radius:99px;
+  background:var(--b1);overflow:hidden;
+  margin-bottom:4px;
+}
+.sync-strip-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--acc),var(--blue));
+  border-radius:99px;
+  transition:width .35s ease, opacity .4s;
+  opacity:0;
+}
+.sync-strip-fill.active{opacity:1}
+
+/* ══ BANNER ══ */
+.banner{
+  display:none;align-items:center;gap:9px;
+  margin:4px 0 8px;padding:10px 14px;border-radius:var(--rs);
+  background:rgba(0,229,176,.07);border:1px solid rgba(0,229,176,.18);
+  font-size:.83rem;color:var(--acc);
+}
+.banner.show{display:flex;animation:up .3s ease}
+
+/* ══ SECTION LABEL ══ */
+.slabel{
+  font-family:'Syne',sans-serif;font-size:.64rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--mut);
+  margin:24px 0 10px;
+}
+
+/* ══ CARD ══ */
+.card{
+  background:var(--card);border:1px solid var(--b1);
+  border-radius:var(--r);padding:20px;
+}
+
+/* ══ CHIPS ══ */
+.clabel{
+  font-size:.74rem;font-weight:500;color:var(--soft);
+  display:flex;align-items:center;gap:6px;margin-bottom:10px;
+}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.chips.g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+.chip{
+  padding:8px 16px;border-radius:99px;
+  border:1.5px solid var(--b2);background:var(--surf);
+  color:var(--soft);font-size:.82rem;font-weight:500;
+  cursor:pointer;user-select:none;
+  transition:border-color .14s,background .14s,color .14s;
+}
+.chips.g .chip{border-radius:var(--rs);text-align:center;padding:10px 4px}
+.chip:hover{border-color:var(--acc);color:var(--txt)}
+.chip.on{
+  border-color:var(--acc);background:rgba(0,229,176,.1);
+  color:var(--acc);font-weight:600;
+}
+
+/* skeleton */
+.sk{
+  background:linear-gradient(90deg,var(--surf) 25%,var(--card2) 50%,var(--surf) 75%);
+  background-size:200% 100%;animation:sh 1.2s infinite;
+  border-radius:99px;height:36px;
+}
+.chips.g .sk{border-radius:var(--rs)}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.div{height:1px;background:var(--b1);margin:0 0 20px}
+
+/* ══ BTN CALCULAR ══ */
+.btn{
+  width:100%;padding:15px;border-radius:var(--r);border:none;
+  background:linear-gradient(135deg,var(--acc) 0%,var(--acc2) 100%);
+  color:#001810;font-family:'Syne',sans-serif;
+  font-size:.95rem;font-weight:700;letter-spacing:.02em;
+  cursor:pointer;position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,229,176,.18);
+  transition:transform .15s,box-shadow .15s;
+}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 26px rgba(0,229,176,.28)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.rip{
+  position:absolute;border-radius:50%;background:rgba(255,255,255,.2);
+  transform:scale(0);animation:rip .5s linear;pointer-events:none;
+}
+@keyframes rip{to{transform:scale(6);opacity:0}}
+
+/* ══ RESULTADO ══ */
+#resultado{margin-top:16px}
+.result{
+  border-radius:var(--r);overflow:hidden;
+  border:1px solid rgba(0,229,176,.2);
+  box-shadow:0 0 36px rgba(0,229,176,.07),0 8px 28px rgba(0,0,0,.4);
+  animation:up .3s ease;
+}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.rh{
+  padding:22px 20px 15px;text-align:center;
+  background:linear-gradient(135deg,rgba(0,229,176,.09) 0%,rgba(59,130,246,.06) 100%);
+  border-bottom:1px solid rgba(0,229,176,.11);
+}
+.rh .rl{font-size:.67rem;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rh .rb{
+  font-family:'Syne',sans-serif;font-size:2.45rem;font-weight:800;
+  color:var(--acc);letter-spacing:-.04em;line-height:1;
+}
+.rh .rs{font-size:.76rem;color:var(--soft);margin-top:5px}
+
+.rg{display:grid;grid-template-columns:1fr 1fr}
+.ri{padding:15px 17px;border-right:1px solid var(--b1);border-bottom:1px solid var(--b1)}
+.ri:nth-child(2n){border-right:none}
+.ri:nth-last-child(-n+2){border-bottom:none}
+.rik{font-size:.66rem;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.riv{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--txt)}
+.riv.ac{color:var(--acc)}
+.riv.go{color:var(--gold)}
+
+.rf{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px;background:var(--surf);font-size:.67rem;color:var(--mut);
+}
+.rfd{width:4px;height:4px;border-radius:50%;background:var(--acc)}
+
+/* ══ TOAST (mínimo, solo errores críticos) ══ */
+#toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(52px);
+  background:var(--card2);border:1px solid var(--b2);
+  padding:9px 18px;border-radius:99px;
+  font-size:.8rem;color:var(--txt);
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;z-index:200;pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* empty */
+.empty{
+  padding:22px 0;text-align:center;
+  font-size:.81rem;color:var(--mut);line-height:1.7;
+}
+.empty span{font-size:1.7rem;display:block;margin-bottom:7px;opacity:.35}
+
+@media(max-width:360px){
+  .rh .rb{font-size:2rem}
+  .chips.g{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="logo">Sim<em>Préstamo</em></div>
+    <div class="sdot" id="sdot"></div>
+  </header>
+
+  <!-- SYNC STRIP (2px progress invisible la mayoría del tiempo) -->
+  <div class="sync-strip"><div class="sync-strip-fill" id="strip"></div></div>
+
+  <!-- BANNER (opcional, desde Sheets) -->
+  <div class="banner" id="banner"><span>📢</span><span id="bannerTxt"></span></div>
+
+  <!-- SIMULADOR -->
+  <p class="slabel">Simulador de préstamo</p>
+
+  <div class="card">
+
+    <div class="clabel">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Plazo
+    </div>
+    <div class="chips" id="chipsDias">
+      <div class="sk" style="width:76px"></div>
+      <div class="sk" style="width:76px"></div>
+      <div class="sk" style="width:76px"></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="clabel">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+      Capital solicitado
+    </div>
+    <div class="chips g" id="chipsCapital">
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+    </div>
+
+    <button class="btn" id="btnCalc" disabled onclick="calcular(event)">
+      Calcular préstamo
+    </button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div id="resultado"></div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════ */
+const SHEET_ID  = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 h → refresh silencioso
+
+/* ══════════════════════════════════════════════
+   ESTADO — persiste entre renders
+══════════════════════════════════════════════ */
+// Selección activa: la guardamos en sessionStorage para sobrevivir F5
+let SEL = (() => {
+  try { return JSON.parse(sessionStorage.getItem('sp_sel')) || {dias:null, capital:null}; }
+  catch(e){ return {dias:null, capital:null}; }
+})();
+
+// Resultado anterior (para restaurar en recarga)
+let LAST_RESULT = (() => {
+  try { return JSON.parse(sessionStorage.getItem('sp_last')) || null; }
+  catch(e){ return null; }
+})();
+
+let CACHE = { dias:[], capital:[], interes:{}, banner:{activo:false,texto:''} };
+let syncActivo = false;
+
+/* ══════════════════════════════════════════════
+   LOCALSTORAGE — claves idénticas al test original
+   simulador_dias / simulador_capital /
+   simulador_interes / simulador_banner
+══════════════════════════════════════════════ */
+function saveToCache(key, data) {
+  localStorage.setItem('simulador_' + key,
+    JSON.stringify({ data, timestamp: Date.now() }));
+}
+
+function getFromCache(key) {
+  try {
+    const raw = localStorage.getItem('simulador_' + key);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    return p?.data !== undefined ? p.data : p; // soporta formato antiguo
+  } catch(e){ return null; }
+}
+
+function getCacheTs(key) {
+  try {
+    const raw = localStorage.getItem('simulador_' + key);
+    return raw ? JSON.parse(raw)?.timestamp || null : null;
+  } catch(e){ return null; }
+}
+
+function cacheOk() {
+  const d = getFromCache('dias');
+  const c = getFromCache('capital');
+  const i = getFromCache('interes');
+  return Array.isArray(d) && d.length > 0
+      && Array.isArray(c) && c.length > 0
+      && i != null && Object.keys(i).length > 0;
+}
+
+function cargarEnMemoria() {
+  CACHE.dias    = getFromCache('dias')    || [];
+  CACHE.capital = getFromCache('capital') || [];
+  CACHE.interes = getFromCache('interes') || {};
+  CACHE.banner  = getFromCache('banner')  || { activo:false, texto:'' };
+}
+
+/* ══════════════════════════════════════════════
+   NORMALIZACIÓN — idéntica al test
+══════════════════════════════════════════════ */
+function norm(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  if (v == null || v === '') return NaN;
+  let s = String(v).trim().replace(/%/g,'').replace(/,/g,'.');
+  const p = s.split('.');
+  if (p.length > 2) s = p.slice(0,-1).join('') + '.' + p[p.length-1];
+  const n = parseFloat(s);
+  return isNaN(n) || !isFinite(n) ? NaN : n;
+}
+
+/* ══════════════════════════════════════════════
+   FETCH SHEETS
+══════════════════════════════════════════════ */
+async function fetchSheet(nombre) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(nombre)}`;
+  const r = await fetch(url, { cache:'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status} — "${nombre}"`);
+  const txt = await r.text();
+  const json = JSON.parse(txt.replace(/^[\s\S]*?setResponse\(/,'').replace(/\);[\s\S]*$/,''));
+  return json.table?.rows || [];
+}
+
+async function leerColumnaA(nombre) {
+  const rows = await fetchSheet(nombre);
+  const vals = [];
+  rows.forEach((row, i) => {
+    const v = row?.c?.[0]?.v;
+    if (i === 0 && isNaN(parseFloat(v))) return;
+    const n = norm(v);
+    if (!isNaN(n)) vals.push(n);
+  });
+  return vals;
+}
+
+async function leerInteres(dias) {
+  const rows = await fetchSheet('Interes');
+  const vals = [];
+  rows.forEach((row, i) => {
+    const v = row?.c?.[0]?.v;
+    const f = row?.c?.[0]?.f || '';
+    if (i === 0 && isNaN(parseFloat(v))) return;
+    let n = norm(v);
+    if (isNaN(n) || n > 1000) return;
+    if (f.includes('%') || (n > 0 && n < 1)) n *= 100;
+    if (n < 0 || n > 100) return;
+    vals.push(n);
+  });
+  const obj = {};
+  const len = Math.min(dias.length, vals.length);
+  for (let i = 0; i < len; i++) obj[dias[i]] = vals[i];
+  return obj;
+}
+
+async function leerBanner() {
+  try {
+    const rows = await fetchSheet('Banner');
+    if (rows.length > 1) {
+      const txt = rows[1]?.c?.[0]?.v || '';
+      return { activo: txt.trim() !== '', texto: txt };
+    }
+  } catch(_) {}
+  return { activo:false, texto:'' };
+}
+
+/* ══════════════════════════════════════════════
+   SINCRONIZACIÓN AUTOMÁTICA SILENCIOSA
+   — nunca interrumpe al usuario
+   — usa la tira de 2px como único indicador visual
+══════════════════════════════════════════════ */
+async function sincronizar(silencioso = true) {
+  if (syncActivo || !navigator.onLine) return;
+  syncActivo = true;
+  setDot('busy');
+  setStrip(8);
+
+  try {
+    const dias = await leerColumnaA('Dias');
+    if (!dias.length) throw new Error('Sin datos en Dias');
+    saveToCache('dias', dias);
+    setStrip(30);
+
+    const capital = await leerColumnaA('Capital');
+    if (!capital.length) throw new Error('Sin datos en Capital');
+    saveToCache('capital', capital);
+    setStrip(55);
+
+    const interes = await leerInteres(dias);
+    if (!Object.keys(interes).length) throw new Error('Sin tasas en Interes');
+    saveToCache('interes', interes);
+    setStrip(82);
+
+    const banner = await leerBanner();
+    saveToCache('banner', banner);
+    setStrip(100);
+
+    // Actualizar en memoria y UI
+    cargarEnMemoria();
+
+    // Refrescar chips SIN perder la selección activa del usuario
+    renderDias(true);
+    renderCapital(true);
+    renderBanner();
+    checkBtn();
+
+    setDot('ok');
+    setTimeout(() => setStrip(null), 500);
+
+  } catch(err) {
+    setDot(navigator.onLine ? 'ok' : 'off');
+    setStrip(null);
+    // Solo mostrar toast si es la primera carga y no hay caché
+    if (!cacheOk()) {
+      toast('Sin datos disponibles — ' + err.message, 4000);
+    }
+  }
+
+  syncActivo = false;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════ */
+function renderDias(mantenerSel = false) {
+  const el = $('chipsDias');
+  if (!CACHE.dias.length) {
+    el.innerHTML = '<div class="empty"><span>📅</span>Cargando plazos…</div>';
+    return;
+  }
+  // Si la selección guardada sigue válida, mantenerla
+  if (mantenerSel && SEL.dias && !CACHE.dias.includes(SEL.dias)) SEL.dias = null;
+  el.innerHTML = '';
+  CACHE.dias.forEach(d => {
+    const c = mk('div','chip'+(SEL.dias===d?' on':''));
+    c.textContent = d + ' días';
+    c.onclick = () => selDias(d);
+    el.appendChild(c);
+  });
+}
+
+function renderCapital(mantenerSel = false) {
+  const el = $('chipsCapital');
+  if (!CACHE.capital.length) {
+    el.innerHTML = '<div class="empty"><span>💰</span>Cargando montos…</div>';
+    return;
+  }
+  if (mantenerSel && SEL.capital && !CACHE.capital.includes(SEL.capital)) SEL.capital = null;
+  el.innerHTML = '';
+  CACHE.capital.forEach(c => {
+    const chip = mk('div','chip'+(SEL.capital===c?' on':''));
+    chip.textContent = '$' + c.toLocaleString('es-MX');
+    chip.onclick = () => selCapital(c);
+    el.appendChild(chip);
+  });
+}
+
+function renderBanner() {
+  const b = CACHE.banner;
+  if (b?.activo && b.texto?.trim()) {
+    $('bannerTxt').textContent = b.texto;
+    $('banner').classList.add('show');
+  } else {
+    $('banner').classList.remove('show');
+  }
+}
+
+/* Restaurar resultado anterior (si había uno al recargar) */
+function restaurarResultado() {
+  if (!LAST_RESULT) return;
+  mostrarResultado(LAST_RESULT, false); // false = sin animación
+}
+
+/* ══════════════════════════════════════════════
+   SELECCIÓN
+══════════════════════════════════════════════ */
+function selDias(d) {
+  SEL.dias = d;
+  persistSel();
+  $$('#chipsDias .chip').forEach(c =>
+    c.classList.toggle('on', parseInt(c.textContent) === d)
+  );
+  checkBtn();
+}
+
+function selCapital(c) {
+  SEL.capital = c;
+  persistSel();
+  $$('#chipsCapital .chip').forEach(el =>
+    el.classList.toggle('on', el.textContent === '$' + c.toLocaleString('es-MX'))
+  );
+  checkBtn();
+}
+
+function persistSel() {
+  try { sessionStorage.setItem('sp_sel', JSON.stringify(SEL)); } catch(e){}
+}
+
+function checkBtn() {
+  $('btnCalc').disabled = !(SEL.dias && SEL.capital);
+}
+
+/* ══════════════════════════════════════════════
+   CALCULAR — 100% desde caché en memoria
+   Fórmula idéntica al test original
+══════════════════════════════════════════════ */
+function calcular(e) {
+  // Ripple
+  const btn = $('btnCalc');
+  const sz  = Math.max(btn.offsetWidth, btn.offsetHeight);
+  const r   = mk('span','rip');
+  r.style.cssText = `width:${sz}px;height:${sz}px;`
+    + `left:${(btn.offsetWidth-sz)/2}px;top:${(btn.offsetHeight-sz)/2}px`;
+  btn.appendChild(r); setTimeout(()=>r.remove(),520);
+
+  const { dias, capital } = SEL;
+  if (!dias || !capital) return;
+
+  const interesPorc = CACHE.interes[dias];
+  if (interesPorc === undefined || interesPorc === null) {
+    toast('Sin tasa para ese plazo'); return;
+  }
+
+  /* FÓRMULA — igual que calcularDesdeCache() del test */
+  const interesTotal = capital * (interesPorc / 100);
+  const totalPagar   = capital + interesTotal;
+  const pagoDiario   = totalPagar / dias;
+
+  const data = { dias, capital, interesPorc, interesTotal, totalPagar, pagoDiario };
+
+  // Guardar resultado en session para restaurar en recarga
+  try { sessionStorage.setItem('sp_last', JSON.stringify(data)); } catch(e){}
+  LAST_RESULT = data;
+
+  mostrarResultado(data, true);
+}
+
+function fmt(n) {
+  return '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function mostrarResultado({ dias, capital, interesPorc, interesTotal, totalPagar, pagoDiario }, animar = true) {
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  $('resultado').innerHTML = `
+    <div class="result" style="${animar?'':'animation:none'}">
+      <div class="rh">
+        <div class="rl">Total a pagar</div>
+        <div class="rb">${fmt(totalPagar)}</div>
+        <div class="rs">${dias} días · tasa ${interesPorc}%</div>
+      </div>
+      <div class="rg">
+        <div class="ri">
+          <div class="rik">Capital</div>
+          <div class="riv">${fmt(capital)}</div>
+        </div>
+        <div class="ri">
+          <div class="rik">Tasa</div>
+          <div class="riv ac">${interesPorc}%</div>
+        </div>
+        <div class="ri">
+          <div class="rik">Interés total</div>
+          <div class="riv go">${fmt(interesTotal)}</div>
+        </div>
+        <div class="ri">
+          <div class="rik">Pago diario</div>
+          <div class="riv ac">${fmt(pagoDiario)}</div>
+        </div>
+      </div>
+      <div class="rf">
+        <div class="rfd"></div>
+        Calculado con caché local · ${hora}
+      </div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════
+   UI UTILS
+══════════════════════════════════════════════ */
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+const mk = (t,c) => { const e=document.createElement(t); if(c) e.className=c; return e; };
+
+function setDot(mode) {
+  $('sdot').className = 'sdot ' + (mode||'');
+}
+
+function setStrip(pct) {
+  const f = $('strip');
+  if (pct === null) {
+    f.classList.remove('active');
+    setTimeout(()=>{ f.style.width='0%'; }, 400);
+    return;
+  }
+  f.classList.add('active');
+  f.style.width = pct + '%';
+}
+
+let _tT;
+function toast(msg, ms=2800) {
+  clearTimeout(_tT);
+  const el=$('toast'); el.textContent=msg; el.classList.add('show');
+  _tT=setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+/* ══════════════════════════════════════════════
+   INIT — 100% automático
+   ──────────────────────────────────────────────
+   Al cargar:
+   1. Si hay caché → renderizar INMEDIATAMENTE (chips + resultado anterior)
+   2. En paralelo (sin bloquear):
+      a. Si caché vencido o vacío → sync silencioso
+   3. Al recuperar conexión → sync silencioso automático
+   NUNCA hay popup, panel ni botón visible de sync
+══════════════════════════════════════════════ */
+async function init() {
+  const hayCache = cacheOk();
+
+  if (hayCache) {
+    /* ─ RUTA RÁPIDA: datos listos, renderizar al instante ─ */
+    setDot('ok');
+    cargarEnMemoria();
+    renderDias();
+    renderCapital();
+    renderBanner();
+    checkBtn();
+    restaurarResultado(); // ← restaura el último cálculo si hubo recarga
+
+    /* Sync silencioso en background si el caché está vencido */
+    const ts    = getCacheTs('dias');
+    const stale = !ts || (Date.now() - ts) > CACHE_TTL;
+    if (stale && navigator.onLine) {
+      sincronizar(true); // no esperar, no bloquear
+    }
+
+  } else {
+    /* ─ PRIMERA VEZ o localStorage limpiado ─ */
+    setDot(navigator.onLine ? 'busy' : 'off');
+    if (navigator.onLine) {
+      await sincronizar(true);
+      if (cacheOk()) {
+        cargarEnMemoria();
+        renderDias();
+        renderCapital();
+        renderBanner();
+        checkBtn();
+      } else {
+        // Sheets no respondió, mostrar estado vacío limpio
+        $('chipsDias').innerHTML    = '<div class="empty"><span>⚠️</span>No se pudieron cargar los datos.<br>Verifica tu conexión.</div>';
+        $('chipsCapital').innerHTML = '';
+      }
+    } else {
+      $('chipsDias').innerHTML    = '<div class="empty"><span>📵</span>Sin conexión.<br>Los datos cargarán automáticamente al reconectar.</div>';
+      $('chipsCapital').innerHTML = '';
+    }
+  }
+
+  /* ─ LISTENERS DE RED — completamente automáticos ─ */
+  window.addEventListener('online', () => {
+    setDot('busy');
+    sincronizar(true).then(() => {
+      if (cacheOk()) {
+        cargarEnMemoria();
+        renderDias(true);
+        renderCapital(true);
+        renderBanner();
+        checkBtn();
+      }
+    });
+  });
+
+  window.addEventListener('offline', () => {
+    setDot('off');
+    // El usuario sigue pudiendo calcular con el caché que tiene
+  });
+}
+
+init();
+</script>
+</body>
+</html>
