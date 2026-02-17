@@ -2,401 +2,244 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SimPréstamo — Simulador Inteligente</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SimPréstamo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 <style>
-  /* ─── TOKENS ─── */
-  :root {
-    --bg:       #0a0d12;
-    --surface:  #111620;
-    --card:     #161c28;
-    --border:   #1e2838;
-    --accent:   #00d4aa;
-    --accent2:  #0099ff;
-    --warn:     #f59e0b;
-    --danger:   #ef4444;
-    --text:     #e8edf5;
-    --muted:    #5a6a82;
-    --soft:     #8fa0b8;
-    --radius:   14px;
-    --radius-sm:8px;
-    --shadow:   0 8px 32px rgba(0,0,0,.45);
-    --glow:     0 0 40px rgba(0,212,170,.12);
-  }
+:root {
+  --bg:       #080b10;
+  --surface:  #0f1319;
+  --card:     #141a24;
+  --card2:    #19202e;
+  --border:   #1c2535;
+  --border2:  #243047;
+  --accent:   #00e5b0;
+  --accent-d: #00b88d;
+  --blue:     #3b82f6;
+  --gold:     #f59e0b;
+  --danger:   #ef4444;
+  --text:     #dce8f5;
+  --muted:    #4d617d;
+  --soft:     #7a92b0;
+  --r:        12px;
+  --r-sm:     8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 55% 45% at 85% 5%,  rgba(0,229,176,.06) 0%,transparent 65%),
+    radial-gradient(ellipse 45% 55% at 5%  95%, rgba(59,130,246,.05) 0%,transparent 65%);
+}
 
-  /* ─── RESET ─── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+.app{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:0 16px 56px}
 
-  /* ─── FONDO MESH ─── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 80% 10%, rgba(0,212,170,.07) 0%, transparent 65%),
-      radial-gradient(ellipse 50% 40% at 10% 90%, rgba(0,153,255,.06) 0%, transparent 65%);
-    pointer-events: none;
-  }
+/* ── HEADER ── */
+.header{display:flex;align-items:center;justify-content:space-between;padding:22px 0 10px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.03em}
+.logo em{color:var(--accent);font-style:normal}
 
-  /* ─── LAYOUT ─── */
-  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 16px 48px; }
+.pill{
+  display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;
+  font-size:.7rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+  border:1px solid var(--border2);background:var(--surface);transition:all .35s;
+}
+.pill.online { border-color:rgba(0,229,176,.35); color:var(--accent) }
+.pill.offline{ border-color:rgba(245,158,11,.35); color:var(--gold)   }
+.pill.sync   { border-color:rgba(59,130,246,.35);  color:var(--blue)   }
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-  /* ─── HEADER ─── */
-  .header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 0 8px;
-  }
-  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.35rem; letter-spacing: -0.03em; }
-  .logo span { color: var(--accent); }
+/* ── BANNER ── */
+.banner{
+  display:none;align-items:center;gap:9px;margin:6px 0;padding:10px 14px;
+  border-radius:var(--r-sm);background:rgba(0,229,176,.07);
+  border:1px solid rgba(0,229,176,.18);font-size:.83rem;color:var(--accent);
+  animation:up .3s ease;
+}
+.banner.show{display:flex}
 
-  /* ─── STATUS PILL ─── */
-  .status-pill {
-    display: flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 99px;
-    font-size: .72rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    transition: all .4s ease;
-  }
-  .status-pill.online  { border-color: rgba(0,212,170,.3); color: var(--accent); }
-  .status-pill.offline { border-color: rgba(245,158,11,.3);  color: var(--warn); }
-  .status-pill.syncing { border-color: rgba(0,153,255,.3);   color: var(--accent2); }
-  .status-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: currentColor;
-    animation: pulse 1.8s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+/* ── SECTION ── */
+.stitle{
+  font-family:'Syne',sans-serif;font-size:.66rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:26px 0 10px;
+}
 
-  /* ─── BANNER ─── */
-  .banner {
-    display: none;
-    align-items: center; gap: 10px;
-    margin: 10px 0 6px;
-    padding: 11px 16px;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, rgba(0,212,170,.08) 0%, rgba(0,153,255,.06) 100%);
-    border: 1px solid rgba(0,212,170,.2);
-    font-size: .85rem; color: var(--accent);
-    animation: slideDown .4s ease;
-  }
-  .banner.show { display: flex; }
-  .banner-icon { font-size: 1rem; flex-shrink: 0; }
-  @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 
-  /* ─── SECTION TITLE ─── */
-  .section-title {
-    font-family: 'Syne', sans-serif;
-    font-size: .68rem; font-weight: 700;
-    letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted);
-    margin: 28px 0 12px;
-  }
+/* ── CHIPS ── */
+.clabel{font-size:.75rem;font-weight:500;color:var(--soft);display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.chips.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 
-  /* ─── CARD ─── */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-  }
+.chip{
+  padding:8px 16px;border-radius:99px;border:1.5px solid var(--border2);background:var(--surface);
+  color:var(--soft);font-size:.82rem;font-weight:500;cursor:pointer;user-select:none;transition:all .15s;
+}
+.chips.grid .chip{border-radius:var(--r-sm);text-align:center;padding:10px 6px}
+.chip:hover{border-color:var(--accent);color:var(--text)}
+.chip.on{border-color:var(--accent);background:rgba(0,229,176,.1);color:var(--accent);font-weight:600}
 
-  /* ─── SELECTOR GRID ─── */
-  .selector-label {
-    font-size: .78rem; font-weight: 500; color: var(--soft);
-    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
-  }
-  .selector-label svg { opacity: .6; }
+.sk{
+  background:linear-gradient(90deg,var(--surface) 25%,var(--card2) 50%,var(--surface) 75%);
+  background-size:200% 100%;animation:sh 1.2s infinite;border-radius:99px;height:36px;
+}
+.chips.grid .sk{border-radius:var(--r-sm)}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-  .chips {
-    display: flex; flex-wrap: wrap; gap: 8px;
-    margin-bottom: 20px;
-  }
-  .chip {
-    padding: 8px 16px;
-    border-radius: 99px;
-    border: 1.5px solid var(--border);
-    background: var(--surface);
-    color: var(--soft);
-    font-size: .83rem; font-weight: 500;
-    cursor: pointer;
-    transition: all .18s ease;
-    user-select: none;
-  }
-  .chip:hover { border-color: var(--accent); color: var(--text); }
-  .chip.active {
-    border-color: var(--accent);
-    background: rgba(0,212,170,.12);
-    color: var(--accent);
-    font-weight: 600;
-  }
+.divider{height:1px;background:var(--border);margin:0 0 20px}
 
-  /* ─── CAPITAL CHIPS (grid 3 cols) ─── */
-  .chips.capital { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .chips.capital .chip { text-align: center; border-radius: var(--radius-sm); padding: 10px 8px; }
+/* ── BTN ── */
+.btn-calc{
+  width:100%;padding:15px;border-radius:var(--r);border:none;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-d) 100%);
+  color:#001a12;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;
+  letter-spacing:.02em;cursor:pointer;
+  box-shadow:0 4px 20px rgba(0,229,176,.2);
+  transition:all .2s;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-calc:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,229,176,.3)}
+.btn-calc:active:not(:disabled){transform:translateY(0)}
+.btn-calc:disabled{opacity:.35;cursor:not-allowed}
+.rip{
+  position:absolute;border-radius:50%;background:rgba(255,255,255,.2);
+  transform:scale(0);animation:rip .5s linear;pointer-events:none;
+}
+@keyframes rip{to{transform:scale(5);opacity:0}}
 
-  /* ─── DIVIDER ─── */
-  .divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
+/* ── RESULTADO ── */
+.result{
+  margin-top:18px;border-radius:var(--r);overflow:hidden;
+  border:1px solid rgba(0,229,176,.22);
+  box-shadow:0 0 40px rgba(0,229,176,.08),0 8px 32px rgba(0,0,0,.4);
+  animation:up .35s ease;
+}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ─── CALCULAR BTN ─── */
-  .btn-calc {
-    width: 100%;
-    padding: 16px;
-    border-radius: var(--radius);
-    border: none;
-    background: linear-gradient(135deg, var(--accent) 0%, #00b890 100%);
-    color: #001a14;
-    font-family: 'Syne', sans-serif;
-    font-size: 1rem; font-weight: 700;
-    letter-spacing: .02em;
-    cursor: pointer;
-    transition: all .2s ease;
-    box-shadow: 0 4px 20px rgba(0,212,170,.25);
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    position: relative; overflow: hidden;
-  }
-  .btn-calc:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,212,170,.35); }
-  .btn-calc:active { transform: translateY(0); }
-  .btn-calc:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-  .btn-calc .ripple {
-    position: absolute; border-radius: 50%;
-    background: rgba(255,255,255,.25);
-    transform: scale(0);
-    animation: ripple .5s linear;
-    pointer-events: none;
-  }
-  @keyframes ripple { to{ transform:scale(4); opacity:0; } }
+.rhead{
+  padding:22px 20px 16px;text-align:center;
+  background:linear-gradient(135deg,rgba(0,229,176,.1) 0%,rgba(59,130,246,.07) 100%);
+  border-bottom:1px solid rgba(0,229,176,.12);
+}
+.rhead .rlabel{font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rhead .rbig{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800;color:var(--accent);letter-spacing:-.04em;line-height:1}
+.rhead .rsub{font-size:.77rem;color:var(--soft);margin-top:5px}
 
-  /* ─── RESULTADO ─── */
-  #resultado { overflow: hidden; transition: all .35s ease; }
+.rgrid{display:grid;grid-template-columns:1fr 1fr}
+.ritem{padding:15px 18px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.ritem:nth-child(2n){border-right:none}
+.ritem:nth-last-child(-n+2){border-bottom:none}
+.rik{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.riv{font-family:'Syne',sans-serif;font-size:1.12rem;font-weight:700;color:var(--text)}
+.riv.ac{color:var(--accent)}
+.riv.go{color:var(--gold)}
 
-  .result-card {
-    margin-top: 20px;
-    background: var(--card);
-    border: 1px solid rgba(0,212,170,.25);
-    border-radius: var(--radius);
-    overflow: hidden;
-    box-shadow: var(--glow), var(--shadow);
-    animation: fadeUp .4s ease;
-  }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.rfooter{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px;background:var(--surface);font-size:.68rem;color:var(--muted);
+}
+.rfooter .fdot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
 
-  .result-header {
-    background: linear-gradient(135deg, rgba(0,212,170,.12) 0%, rgba(0,153,255,.08) 100%);
-    border-bottom: 1px solid rgba(0,212,170,.15);
-    padding: 18px 20px;
-    text-align: center;
-  }
-  .result-header .label { font-size: .72rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
-  .result-header .amount {
-    font-family: 'Syne', sans-serif;
-    font-size: 2.4rem; font-weight: 800; color: var(--accent);
-    letter-spacing: -.03em; line-height: 1;
-  }
-  .result-header .sub { font-size: .78rem; color: var(--soft); margin-top: 4px; }
+/* ── STATUS BAR ── */
+.statusbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px;padding:10px 14px;border-radius:var(--r-sm);
+  background:var(--surface);border:1px solid var(--border);font-size:.73rem;color:var(--muted);
+}
+.statusbar .sl{display:flex;align-items:center;gap:7px;min-width:0;flex:1}
+.statusbar .sl span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.sdot.warn{background:var(--gold)}
+.sdot.err{background:var(--danger)}
 
-  .result-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
-  .result-item {
-    padding: 16px 18px;
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-  .result-item:nth-child(2n) { border-right: none; }
-  .result-item:nth-last-child(-n+2) { border-bottom: none; }
-  .result-item .ri-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
-  .result-item .ri-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 1.15rem; font-weight: 700; color: var(--text);
-  }
-  .result-item .ri-value.accent { color: var(--accent); }
-  .result-item .ri-value.gold   { color: #fbbf24; }
+.statusbar button{
+  flex-shrink:0;background:none;border:1px solid var(--border2);
+  padding:4px 10px;border-radius:99px;color:var(--soft);font-size:.68rem;
+  cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.statusbar button:hover{border-color:var(--accent);color:var(--accent)}
+.statusbar button:disabled{opacity:.3;cursor:not-allowed}
 
-  /* ─── CACHE BADGE ─── */
-  .cache-badge {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 10px;
-    background: var(--surface);
-    font-size: .7rem; color: var(--muted);
-  }
-  .cache-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.progress{height:2px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:10px;display:none}
+.progress.show{display:block}
+.pfill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--blue));transition:width .4s}
 
-  /* ─── SYNC PANEL (admin) ─── */
-  .sync-toggle {
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-    width: 100%;
-    margin-top: 28px;
-    background: none; border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 11px;
-    color: var(--muted); font-size: .78rem; font-weight: 500;
-    cursor: pointer; transition: all .2s;
-  }
-  .sync-toggle:hover { border-color: var(--soft); color: var(--soft); }
-  .sync-toggle svg { transition: transform .3s; }
-  .sync-toggle.open svg { transform: rotate(180deg); }
+.synclog{
+  font-size:.71rem;font-family:monospace;background:var(--bg);
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:10px 12px;line-height:1.9;max-height:110px;overflow-y:auto;
+  margin-top:10px;display:none;color:var(--muted);
+}
+.synclog.show{display:block}
+.lok{color:var(--accent)}.lw{color:var(--gold)}.le{color:var(--danger)}.li{color:var(--blue)}
 
-  .sync-panel {
-    display: none;
-    flex-direction: column; gap: 10px;
-    margin-top: 10px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--card);
-    animation: fadeUp .25s ease;
-  }
-  .sync-panel.show { display: flex; }
+#toast{
+  position:fixed;bottom:22px;left:50%;
+  transform:translateX(-50%) translateY(56px);
+  background:var(--card2);border:1px solid var(--border2);
+  padding:10px 20px;border-radius:99px;font-size:.81rem;color:var(--text);
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;z-index:100;pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
 
-  .sync-row {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px;
-  }
-  .sync-info { font-size: .78rem; color: var(--soft); }
-  .sync-info strong { color: var(--text); display: block; font-size: .82rem; }
+.empty{padding:24px 0;text-align:center;font-size:.82rem;color:var(--muted);line-height:1.6}
+.empty span{font-size:1.8rem;display:block;margin-bottom:8px;opacity:.4}
 
-  .btn-sync {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid rgba(0,153,255,.4);
-    background: rgba(0,153,255,.08);
-    color: var(--accent2);
-    font-size: .78rem; font-weight: 600;
-    cursor: pointer; transition: all .2s;
-    white-space: nowrap;
-  }
-  .btn-sync:hover { background: rgba(0,153,255,.16); }
-  .btn-sync:disabled { opacity:.4; cursor: not-allowed; }
-
-  /* LOG */
-  .sync-log {
-    font-size: .72rem;
-    background: var(--bg);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    color: var(--muted);
-    line-height: 1.8;
-    max-height: 120px;
-    overflow-y: auto;
-    display: none;
-  }
-  .sync-log.show { display: block; }
-  .log-ok   { color: var(--accent); }
-  .log-warn { color: var(--warn); }
-  .log-err  { color: var(--danger); }
-  .log-info { color: var(--accent2); }
-
-  /* ─── EMPTY STATE ─── */
-  .empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--muted);
-    font-size: .85rem;
-  }
-  .empty .icon { font-size: 2.5rem; margin-bottom: 10px; opacity: .4; }
-
-  /* ─── SKELETON ─── */
-  .skeleton {
-    background: linear-gradient(90deg, var(--surface) 25%, var(--card) 50%, var(--surface) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.2s infinite;
-    border-radius: 99px; height: 36px;
-  }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-  /* ─── TOAST ─── */
-  #toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 11px 20px; border-radius: 99px;
-    font-size: .82rem; color: var(--text);
-    box-shadow: 0 8px 24px rgba(0,0,0,.5);
-    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-    white-space: nowrap; z-index: 100;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* ─── PROGRESS BAR ─── */
-  .progress-bar {
-    height: 2px; background: var(--border); border-radius: 99px;
-    margin: 12px 0 0; overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 99px;
-    transition: width .4s ease;
-  }
-
-  /* ─── MOBILE FINE TUNE ─── */
-  @media (max-width: 360px) {
-    .result-header .amount { font-size: 2rem; }
-    .chips.capital { grid-template-columns: repeat(2,1fr); }
-  }
+@media(max-width:360px){
+  .rhead .rbig{font-size:2rem}
+  .chips.grid{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
-
 <div class="app">
 
-  <!-- ─── HEADER ─── -->
   <header class="header">
-    <div class="logo">Sim<span>Préstamo</span></div>
-    <div class="status-pill" id="statusPill">
-      <div class="status-dot"></div>
-      <span id="statusText">—</span>
-    </div>
+    <div class="logo">Sim<em>Préstamo</em></div>
+    <div class="pill" id="pill"><div class="dot"></div><span id="pillTxt">—</span></div>
   </header>
 
-  <!-- ─── BANNER ─── -->
-  <div class="banner" id="banner">
-    <span class="banner-icon">📢</span>
-    <span id="bannerText"></span>
-  </div>
+  <div class="banner" id="banner"><span>📢</span><span id="bannerTxt"></span></div>
 
-  <!-- ─── SIMULADOR ─── -->
-  <p class="section-title">Simulador de préstamo</p>
+  <p class="stitle">Simulador de préstamo</p>
 
   <div class="card">
-
-    <!-- PLAZO -->
-    <div class="selector-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      Plazo (días)
+    <div class="clabel">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Plazo
     </div>
-    <div class="chips" id="chipsPlazos">
-      <div class="skeleton" style="width:80px"></div>
-      <div class="skeleton" style="width:80px"></div>
-      <div class="skeleton" style="width:80px"></div>
+    <div class="chips" id="chipsDias">
+      <div class="sk" style="width:76px"></div>
+      <div class="sk" style="width:76px"></div>
+      <div class="sk" style="width:76px"></div>
     </div>
 
     <div class="divider"></div>
 
-    <!-- CAPITAL -->
-    <div class="selector-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div class="clabel">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
       Capital solicitado
     </div>
-    <div class="chips capital" id="chipsCapital">
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
-      <div class="skeleton"></div>
+    <div class="chips grid" id="chipsCapital">
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+      <div class="sk"></div><div class="sk"></div><div class="sk"></div>
     </div>
 
     <button class="btn-calc" id="btnCalc" disabled onclick="calcular(event)">
@@ -404,474 +247,428 @@
     </button>
   </div>
 
-  <!-- ─── RESULTADO ─── -->
   <div id="resultado"></div>
 
-  <!-- ─── SYNC PANEL (admin/técnico) ─── -->
-  <button class="sync-toggle" id="syncToggle" onclick="toggleSync()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="6 9 12 3 18 9"/><polyline points="18 15 12 21 6 15"/>
-    </svg>
-    Sincronización de datos
-  </button>
-
-  <div class="sync-panel" id="syncPanel">
-
-    <div class="sync-row">
-      <div class="sync-info">
-        <strong id="syncCacheInfo">Cargando…</strong>
-        Última sync: <span id="syncLastTime">—</span>
-      </div>
-      <button class="btn-sync" id="btnSync" onclick="sincronizar()">
-        ↻ Sincronizar
-      </button>
-    </div>
-
-    <div class="progress-bar" id="progressBar" style="display:none">
-      <div class="progress-fill" id="progressFill"></div>
-    </div>
-
-    <div class="sync-log" id="syncLog"></div>
-
+  <div class="statusbar" id="statusBar">
+    <div class="sl"><div class="sdot" id="sbarDot"></div><span id="sbarTxt">Iniciando…</span></div>
+    <button id="sbarBtn" onclick="syncManual()" disabled>↻ Sync</button>
   </div>
 
-</div>
+  <div class="progress" id="progress"><div class="pfill" id="pfill"></div></div>
+  <div class="synclog" id="synclog"></div>
 
-<!-- ─── TOAST ─── -->
+</div>
 <div id="toast"></div>
 
-<!-- ─────────────────────────────────────────── -->
 <script>
-/* ============================================
+/* ════════════════════════════════════════════
    CONFIG
-   ============================================ */
-const SHEET_ID   = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
-const CACHE_TTL  = 12 * 60 * 60 * 1000; // 12 h
-const CACHE_KEYS = { dias:'dias', capital:'capital', interes:'interes', banner:'banner' };
+   ════════════════════════════════════════════ */
+const SHEET_ID  = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 h
 
-/* ============================================
-   STATE
-   ============================================ */
-let state = {
-  plazo:   null,
-  capital: null,
-  cache: { dias:[], capital:[], interes:{}, banner:{activo:false,texto:''} }
-};
+/* ════════════════════════════════════════════
+   ESTADO EN MEMORIA
+   ════════════════════════════════════════════ */
+let SEL   = { dias: null, capital: null };
+let CACHE = { dias:[], capital:[], interes:{}, banner:{activo:false,texto:''} };
+let syncActivo = false;
 
-/* ============================================
-   UTILIDADES
-   ============================================ */
-const $ = id => document.getElementById(id);
-
-function fmt(n) {
-  return '$' + n.toLocaleString('es-MX', { minimumFractionDigits:2, maximumFractionDigits:2 });
+/* ════════════════════════════════════════════
+   LOCALSTORAGE — mismas claves que el test:
+   simulador_dias, simulador_capital,
+   simulador_interes, simulador_banner
+   ════════════════════════════════════════════ */
+function saveToCache(key, data) {
+  localStorage.setItem('simulador_' + key, JSON.stringify({ data, timestamp: Date.now() }));
 }
 
-function toast(msg, duration = 2600) {
-  const el = $('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), duration);
-}
-
-function log(msg, type = 'info') {
-  const el = $('syncLog');
-  el.classList.add('show');
-  const span = document.createElement('span');
-  span.className = `log-${type}`;
-  const now = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  span.textContent = `[${now}] ${msg}\n`;
-  el.appendChild(span);
-  el.scrollTop = el.scrollHeight;
-}
-
-function setProgress(pct) {
-  const bar  = $('progressBar');
-  const fill = $('progressFill');
-  if (pct === null) { bar.style.display = 'none'; return; }
-  bar.style.display = 'block';
-  fill.style.width  = pct + '%';
-}
-
-/* ============================================
-   CACHÉ: localStorage wrapper
-   ============================================ */
-function cacheSet(key, data) {
+function getFromCache(key) {
   try {
-    localStorage.setItem('sp_' + key, JSON.stringify({ data, ts: Date.now() }));
-  } catch(e) { console.warn('Cache write error', e); }
-}
-
-function cacheGet(key) {
-  try {
-    const raw = localStorage.getItem('sp_' + key);
+    const raw = localStorage.getItem('simulador_' + key);
     if (!raw) return null;
-    return JSON.parse(raw);           // { data, ts }
+    const p = JSON.parse(raw);
+    // Soporta formato antiguo (dato directo) y nuevo (con wrapper {data,timestamp})
+    return p?.data !== undefined ? p.data : p;
   } catch(e) { return null; }
 }
 
-function cacheIsStale(key) {
-  const item = cacheGet(key);
-  if (!item) return true;
-  return (Date.now() - item.ts) > CACHE_TTL;
+function getCacheTs(key) {
+  try {
+    const raw = localStorage.getItem('simulador_' + key);
+    if (!raw) return null;
+    return JSON.parse(raw)?.timestamp || null;
+  } catch(e) { return null; }
 }
 
-function cacheLastSync() {
-  // Toma el timestamp más reciente entre las 4 claves
-  let latest = null;
-  for (const k of Object.values(CACHE_KEYS)) {
-    const item = cacheGet(k);
-    if (item && (!latest || item.ts > latest)) latest = item.ts;
-  }
-  return latest;
+function cacheCompleto() {
+  const d = getFromCache('dias');
+  const c = getFromCache('capital');
+  const i = getFromCache('interes');
+  return Array.isArray(d) && d.length > 0
+      && Array.isArray(c) && c.length > 0
+      && i && Object.keys(i).length > 0;
 }
 
-/* ============================================
-   STATUS INDICATOR
-   ============================================ */
-function updateStatus(mode) {
-  const pill = $('statusPill');
-  const txt  = $('statusText');
-  pill.className = 'status-pill ' + mode;
-  txt.textContent = mode === 'online' ? 'Online' : mode === 'syncing' ? 'Sincronizando' : 'Offline';
+function cargarEnMemoria() {
+  CACHE.dias    = getFromCache('dias')    || [];
+  CACHE.capital = getFromCache('capital') || [];
+  CACHE.interes = getFromCache('interes') || {};
+  CACHE.banner  = getFromCache('banner')  || { activo:false, texto:'' };
 }
 
-/* ============================================
-   NORMALIZACIÓN (datos de Sheets)
-   ============================================ */
-function normalizar(v) {
+/* ════════════════════════════════════════════
+   NORMALIZACIÓN — idéntica al test original
+   ════════════════════════════════════════════ */
+function norm(v) {
   if (typeof v === 'number') return isFinite(v) ? v : NaN;
-  if (!v) return NaN;
+  if (v == null || v === '') return NaN;
   let s = String(v).trim().replace(/%/g,'').replace(/,/g,'.');
-  const parts = s.split('.');
-  if (parts.length > 2) s = parts.slice(0,-1).join('') + '.' + parts[parts.length-1];
+  const p = s.split('.');
+  if (p.length > 2) s = p.slice(0,-1).join('') + '.' + p[p.length-1];
   const n = parseFloat(s);
   return isNaN(n) || !isFinite(n) ? NaN : n;
 }
 
-/* ============================================
-   FETCH SHEETS
-   ============================================ */
-async function fetchSheet(sheet) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheet}`;
-  const r   = await fetch(url);
-  if (!r.ok) throw new Error(`HTTP ${r.status} en hoja "${sheet}"`);
+/* ════════════════════════════════════════════
+   FETCH SHEETS — idéntico al test
+   ════════════════════════════════════════════ */
+async function fetchSheet(nombre) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(nombre)}`;
+  const r = await fetch(url, { cache:'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status} en hoja "${nombre}"`);
   const txt = await r.text();
   const json = JSON.parse(txt.replace(/^[\s\S]*?setResponse\(/,'').replace(/\);[\s\S]*$/,''));
-  return json.table.rows || [];
+  return json.table?.rows || [];
 }
 
-async function fetchColA(sheet) {
-  const rows = await fetchSheet(sheet);
-  return rows
-    .filter((row, i) => { if (i===0 && isNaN(parseFloat(row?.c?.[0]?.v))) return false; return true; })
-    .map(row => normalizar(row?.c?.[0]?.v))
-    .filter(n => !isNaN(n));
+async function leerColumnaA(nombre) {
+  const rows = await fetchSheet(nombre);
+  const vals = [];
+  rows.forEach((row, i) => {
+    const v = row?.c?.[0]?.v;
+    if (i === 0 && isNaN(parseFloat(v))) return; // saltar encabezado
+    const n = norm(v);
+    if (!isNaN(n)) vals.push(n);
+  });
+  return vals;
 }
 
-async function fetchInteres(dias) {
+async function leerInteres(dias) {
   const rows = await fetchSheet('Interes');
   const vals = [];
   rows.forEach((row, i) => {
-    if (i===0 && isNaN(parseFloat(row?.c?.[0]?.v))) return;
-    let n = normalizar(row?.c?.[0]?.v);
-    if (isNaN(n) || n > 1000) return;
-    const fmt = row?.c?.[0]?.f || '';
-    if (fmt.includes('%') || (n > 0 && n < 1)) n *= 100;
+    const v = row?.c?.[0]?.v;
+    const f = row?.c?.[0]?.f || '';
+    if (i === 0 && isNaN(parseFloat(v))) return;
+    let n = norm(v);
+    if (isNaN(n) || n > 1000) return;                    // rechazar fechas
+    if (f.includes('%') || (n > 0 && n < 1)) n *= 100;  // decimal → porcentaje
     if (n < 0 || n > 100) return;
     vals.push(n);
   });
+  // Mapear días → tasa (igual que el test)
   const obj = {};
   const len = Math.min(dias.length, vals.length);
   for (let i = 0; i < len; i++) obj[dias[i]] = vals[i];
   return obj;
 }
 
-async function fetchBanner() {
+async function leerBanner() {
   const rows = await fetchSheet('Banner');
   if (rows.length > 1) {
     const txt = rows[1]?.c?.[0]?.v || '';
     return { activo: txt.trim() !== '', texto: txt };
   }
-  return { activo: false, texto: '' };
+  return { activo:false, texto:'' };
 }
 
-/* ============================================
-   SINCRONIZACIÓN PRINCIPAL
-   ============================================ */
-async function sincronizar(silent = false) {
+/* ════════════════════════════════════════════
+   SINCRONIZACIÓN
+   Lee Sheets → normaliza → guarda localStorage
+   (igual que leerDatosReales() del test)
+   ════════════════════════════════════════════ */
+async function sincronizar(silencioso = false) {
+  if (syncActivo) return;
   if (!navigator.onLine) {
-    if (!silent) { toast('📵 Sin conexión — usando datos guardados'); }
-    updateStatus('offline');
-    return false;
+    if (!silencioso) toast('📵 Sin conexión');
+    setPill('offline');
+    return;
   }
 
-  updateStatus('syncing');
-  $('btnSync').disabled = true;
+  syncActivo = true;
+  setPill('sync');
   setProgress(5);
-  if (!silent) log('Iniciando sincronización con Google Sheets…', 'info');
+  $('sbarBtn').disabled = true;
+
+  if (!silencioso) {
+    $('synclog').classList.add('show');
+    addLog('Conectando con Google Sheets…', 'i');
+  }
 
   try {
     // 1. Días
-    const dias = await fetchColA('Dias');
-    if (!dias.length) throw new Error('Hoja "Dias" sin datos válidos');
-    cacheSet(CACHE_KEYS.dias, dias);
-    setProgress(30);
-    if (!silent) log(`✓ Días cargados: [${dias.join(', ')}]`, 'ok');
+    const dias = await leerColumnaA('Dias');
+    if (!dias.length) throw new Error('"Dias" sin valores válidos');
+    saveToCache('dias', dias);
+    setProgress(28);
+    if (!silencioso) addLog(`✓ Días: [${dias.join(', ')}]`, 'ok');
 
     // 2. Capital
-    const capital = await fetchColA('Capital');
-    if (!capital.length) throw new Error('Hoja "Capital" sin datos válidos');
-    cacheSet(CACHE_KEYS.capital, capital);
-    setProgress(55);
-    if (!silent) log(`✓ Capitales: ${capital.length} montos`, 'ok');
+    const capital = await leerColumnaA('Capital');
+    if (!capital.length) throw new Error('"Capital" sin valores válidos');
+    saveToCache('capital', capital);
+    setProgress(54);
+    if (!silencioso) addLog(`✓ Capital: ${capital.length} montos`, 'ok');
 
-    // 3. Interés
-    const interes = await fetchInteres(dias);
-    if (!Object.keys(interes).length) throw new Error('Hoja "Interes" sin tasas válidas');
-    cacheSet(CACHE_KEYS.interes, interes);
+    // 3. Interés (mapeado días→tasa)
+    const interes = await leerInteres(dias);
+    if (!Object.keys(interes).length) throw new Error('"Interes" sin tasas válidas');
+    saveToCache('interes', interes);
     setProgress(80);
-    if (!silent) log(`✓ Tasas: ${Object.keys(interes).length} combinaciones`, 'ok');
+    if (!silencioso) addLog(`✓ Tasas: ${Object.keys(interes).length} entradas`, 'ok');
 
     // 4. Banner
-    const banner = await fetchBanner();
-    cacheSet(CACHE_KEYS.banner, banner);
+    const banner = await leerBanner();
+    saveToCache('banner', banner);
     setProgress(100);
-    if (!silent) log('✓ Banner actualizado', 'ok');
+    if (!silencioso) addLog('✓ Banner ok', 'ok');
 
-    // Aplicar datos
-    state.cache = { dias, capital, interes, banner };
-    renderChips();
+    // Cargar en memoria y renderizar
+    cargarEnMemoria();
+    renderDias();
+    renderCapital();
     renderBanner();
-    updateStatus('online');
-    updateSyncMeta();
+    updateStatusBar();
+    setPill('online');
 
-    if (!silent) {
-      log('Sincronización completa ✓', 'ok');
+    if (!silencioso) {
+      addLog('Listo ✓', 'ok');
       toast('✓ Datos actualizados');
     }
 
-    setTimeout(() => setProgress(null), 700);
-    $('btnSync').disabled = false;
-    return true;
-
-  } catch (err) {
-    log(`✗ Error: ${err.message}`, 'err');
-    if (!silent) toast('⚠️ Error al sincronizar');
-    updateStatus(navigator.onLine ? 'online' : 'offline');
-    setTimeout(() => setProgress(null), 400);
-    $('btnSync').disabled = false;
-    return false;
+  } catch(err) {
+    if (!silencioso) {
+      addLog(`✗ ${err.message}`, 'e');
+      toast('⚠ ' + err.message, 3500);
+    }
+    // Rescate: si hay cache aunque sea viejo, usarlo
+    if (cacheCompleto()) {
+      cargarEnMemoria();
+      renderDias();
+      renderCapital();
+      renderBanner();
+    }
+    setPill(navigator.onLine ? 'online' : 'offline');
   }
+
+  setTimeout(() => setProgress(null), 700);
+  $('sbarBtn').disabled = false;
+  syncActivo = false;
 }
 
-/* ============================================
-   CARGAR DESDE CACHÉ
-   ============================================ */
-function cargarDesdeCache() {
-  const d = cacheGet(CACHE_KEYS.dias);
-  const c = cacheGet(CACHE_KEYS.capital);
-  const i = cacheGet(CACHE_KEYS.interes);
-  const b = cacheGet(CACHE_KEYS.banner);
-
-  const ok = d?.data?.length && c?.data?.length && i?.data && Object.keys(i.data).length;
-
-  if (ok) {
-    state.cache.dias    = d.data;
-    state.cache.capital = c.data;
-    state.cache.interes = i.data;
-    state.cache.banner  = b?.data || { activo:false, texto:'' };
-    return true;
-  }
-  return false;
-}
-
-/* ============================================
-   RENDER CHIPS
-   ============================================ */
-function renderChips() {
-  // Plazos
-  const cp = $('chipsPlazos');
-  cp.innerHTML = '';
-  if (!state.cache.dias.length) {
-    cp.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Sin datos — sincroniza primero</span>';
+/* ════════════════════════════════════════════
+   RENDER CHIPS (desde CACHE en memoria)
+   ════════════════════════════════════════════ */
+function renderDias() {
+  const el = $('chipsDias');
+  el.innerHTML = '';
+  if (!CACHE.dias.length) {
+    el.innerHTML = '<div class="empty"><span>📅</span>Sin datos de plazos</div>';
     return;
   }
-  state.cache.dias.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'chip' + (state.plazo === d ? ' active' : '');
-    el.textContent = d + ' días';
-    el.onclick = () => selectPlazo(d);
-    cp.appendChild(el);
-  });
-
-  // Capital
-  const cc = $('chipsCapital');
-  cc.innerHTML = '';
-  state.cache.capital.forEach(c => {
-    const el = document.createElement('div');
-    el.className = 'chip' + (state.capital === c ? ' active' : '');
-    el.textContent = '$' + c.toLocaleString('es-MX');
-    el.onclick = () => selectCapital(c);
-    cc.appendChild(el);
-  });
-
-  checkBtn();
-}
-
-function selectPlazo(d) {
-  state.plazo = d;
-  document.querySelectorAll('#chipsPlazos .chip').forEach(el => {
-    el.classList.toggle('active', parseInt(el.textContent) === d);
+  CACHE.dias.forEach(d => {
+    const c = mk('div','chip' + (SEL.dias===d?' on':''));
+    c.textContent = d + ' días';
+    c.onclick = () => selDias(d);
+    el.appendChild(c);
   });
   checkBtn();
 }
 
-function selectCapital(c) {
-  state.capital = c;
-  document.querySelectorAll('#chipsCapital .chip').forEach(el => {
-    el.classList.toggle('active', el.textContent === '$' + c.toLocaleString('es-MX'));
+function renderCapital() {
+  const el = $('chipsCapital');
+  el.innerHTML = '';
+  if (!CACHE.capital.length) {
+    el.innerHTML = '<div class="empty"><span>💰</span>Sin datos de capital</div>';
+    return;
+  }
+  CACHE.capital.forEach(c => {
+    const chip = mk('div','chip' + (SEL.capital===c?' on':''));
+    chip.textContent = '$' + c.toLocaleString('es-MX');
+    chip.onclick = () => selCapital(c);
+    el.appendChild(chip);
   });
   checkBtn();
 }
 
-function checkBtn() {
-  $('btnCalc').disabled = !(state.plazo && state.capital);
+function selDias(d) {
+  SEL.dias = d;
+  $$('#chipsDias .chip').forEach(c => c.classList.toggle('on', parseInt(c.textContent)===d));
+  checkBtn();
 }
 
-/* ============================================
-   BANNER
-   ============================================ */
+function selCapital(c) {
+  SEL.capital = c;
+  $$('#chipsCapital .chip').forEach(el => el.classList.toggle('on', el.textContent==='$'+c.toLocaleString('es-MX')));
+  checkBtn();
+}
+
+function checkBtn() { $('btnCalc').disabled = !(SEL.dias && SEL.capital); }
+
+/* ── Banner ── */
 function renderBanner() {
-  const b = state.cache.banner;
-  const el = $('banner');
-  if (b?.activo && b?.texto?.trim()) {
-    $('bannerText').textContent = b.texto;
-    el.classList.add('show');
+  const b = CACHE.banner;
+  if (b?.activo && b.texto?.trim()) {
+    $('bannerTxt').textContent = b.texto;
+    $('banner').classList.add('show');
   } else {
-    el.classList.remove('show');
+    $('banner').classList.remove('show');
   }
 }
 
-/* ============================================
-   CALCULAR
-   ============================================ */
+/* ════════════════════════════════════════════
+   CALCULAR — 100% desde cache en memoria
+   Fórmula idéntica a calcularDesdeCache() del test
+   ════════════════════════════════════════════ */
 function calcular(e) {
-  // Ripple
-  const btn  = $('btnCalc');
-  const rip  = document.createElement('span');
-  rip.className = 'ripple';
-  rip.style.cssText = `width:${btn.offsetWidth}px;height:${btn.offsetWidth}px;left:0;top:${(btn.offsetHeight - btn.offsetWidth)/2}px`;
-  btn.appendChild(rip);
-  setTimeout(() => rip.remove(), 520);
+  /* ripple visual */
+  const btn = $('btnCalc');
+  const sz  = Math.max(btn.offsetWidth, btn.offsetHeight);
+  const r   = mk('span','rip');
+  r.style.cssText = `width:${sz}px;height:${sz}px;left:${(btn.offsetWidth-sz)/2}px;top:${(btn.offsetHeight-sz)/2}px`;
+  btn.appendChild(r); setTimeout(()=>r.remove(),520);
 
-  const { plazo, capital, cache: { dias, capital: caps, interes } } = state;
+  const { dias, capital } = SEL;
+  if (!dias || !capital)  { toast('Selecciona plazo y capital'); return; }
 
-  if (!plazo || !capital) { toast('Selecciona plazo y capital'); return; }
-  if (!interes[plazo] && interes[plazo] !== 0) { toast('Sin tasa para ese plazo'); return; }
+  const interesPorc = CACHE.interes[dias];
+  if (interesPorc === undefined || interesPorc === null) { toast('⚠ Sin tasa para ese plazo'); return; }
 
-  const tasa         = interes[plazo];
-  const interesTotal = capital * (tasa / 100);
+  /* FÓRMULA — igual que el test */
+  const interesTotal = capital * (interesPorc / 100);
   const totalPagar   = capital + interesTotal;
-  const pagoDiario   = totalPagar / plazo;
+  const pagoDiario   = totalPagar / dias;
+
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 
   $('resultado').innerHTML = `
-    <div class="result-card">
-      <div class="result-header">
-        <div class="label">Total a pagar</div>
-        <div class="amount">${fmt(totalPagar)}</div>
-        <div class="sub">en ${plazo} días · ${tasa}% de interés</div>
+    <div class="result">
+      <div class="rhead">
+        <div class="rlabel">Total a pagar</div>
+        <div class="rbig">${fmt(totalPagar)}</div>
+        <div class="rsub">${dias} días · tasa ${interesPorc}%</div>
       </div>
-
-      <div class="result-grid">
-        <div class="result-item">
-          <div class="ri-label">Capital</div>
-          <div class="ri-value">${fmt(capital)}</div>
-        </div>
-        <div class="result-item">
-          <div class="ri-label">Tasa aplicada</div>
-          <div class="ri-value accent">${tasa}%</div>
-        </div>
-        <div class="result-item">
-          <div class="ri-label">Interés generado</div>
-          <div class="ri-value gold">${fmt(interesTotal)}</div>
-        </div>
-        <div class="result-item">
-          <div class="ri-label">Pago diario</div>
-          <div class="ri-value accent">${fmt(pagoDiario)}</div>
-        </div>
+      <div class="rgrid">
+        <div class="ritem"><div class="rik">Capital</div><div class="riv">${fmt(capital)}</div></div>
+        <div class="ritem"><div class="rik">Tasa</div><div class="riv ac">${interesPorc}%</div></div>
+        <div class="ritem"><div class="rik">Interés total</div><div class="riv go">${fmt(interesTotal)}</div></div>
+        <div class="ritem"><div class="rik">Pago diario</div><div class="riv ac">${fmt(pagoDiario)}</div></div>
       </div>
-
-      <div class="cache-badge">
-        <div class="dot"></div>
-        Calculado con datos del caché local · ${new Date().toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'})}
-      </div>
+      <div class="rfooter"><div class="fdot"></div>Calculado con caché local · ${hora}</div>
     </div>`;
 }
 
-/* ============================================
-   SYNC PANEL TOGGLE
-   ============================================ */
-function toggleSync() {
-  const panel  = $('syncPanel');
-  const toggle = $('syncToggle');
-  const show   = !panel.classList.contains('show');
-  panel.classList.toggle('show', show);
-  toggle.classList.toggle('open', show);
+/* ════════════════════════════════════════════
+   UI UTILS
+   ════════════════════════════════════════════ */
+function fmt(n) { return '$' + n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+const mk = (tag,cls) => { const el=document.createElement(tag); if(cls) el.className=cls; return el; };
+
+let _tTimer;
+function toast(msg,ms=2800){
+  clearTimeout(_tTimer);
+  const el=$('toast'); el.textContent=msg; el.classList.add('show');
+  _tTimer=setTimeout(()=>el.classList.remove('show'),ms);
 }
 
-function updateSyncMeta() {
-  const ts = cacheLastSync();
-  const d  = cacheGet(CACHE_KEYS.dias);
-  const c  = cacheGet(CACHE_KEYS.capital);
-  const i  = cacheGet(CACHE_KEYS.interes);
-  const ok = d?.data?.length && c?.data?.length && i?.data;
-
-  $('syncCacheInfo').textContent = ok
-    ? `${d.data.length} plazos · ${c.data.length} montos · ${Object.keys(i.data).length} tasas`
-    : 'Sin datos en caché';
-
-  $('syncLastTime').textContent = ts
-    ? new Date(ts).toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
-    : 'Nunca';
+function setPill(mode) {
+  $('pill').className='pill '+mode;
+  $('pillTxt').textContent={online:'Online',offline:'Offline',sync:'Sincronizando'}[mode]||mode;
 }
 
-/* ============================================
-   INIT
-   ============================================ */
+function setProgress(pct) {
+  const bar=$('progress');
+  if(pct===null){bar.classList.remove('show');return;}
+  bar.classList.add('show'); $('pfill').style.width=pct+'%';
+}
+
+function addLog(msg,type='i') {
+  const el=$('synclog');
+  const span=mk('span',{ok:'lok',w:'lw',e:'le',i:'li'}[type]||'li');
+  const t=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  span.textContent=`[${t}] ${msg}\n`;
+  el.appendChild(span); el.scrollTop=el.scrollHeight;
+}
+
+function syncManual() {
+  $('synclog').innerHTML='';
+  $('synclog').classList.add('show');
+  sincronizar(false);
+}
+
+function updateStatusBar() {
+  const d  = getFromCache('dias');
+  const c  = getFromCache('capital');
+  const i  = getFromCache('interes');
+  const ts = getCacheTs('dias');
+  const ok = Array.isArray(d) && d.length && Array.isArray(c) && c.length && i && Object.keys(i).length;
+
+  $('sbarDot').className = 'sdot' + (ok ? '' : ' err');
+  $('sbarTxt').textContent = ok
+    ? `Caché: ${d.length} plazos · ${c.length} montos · ${ts ? new Date(ts).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}`
+    : 'Sin caché — sincroniza para comenzar';
+}
+
+/* ════════════════════════════════════════════
+   INIT — flujo automático
+   1. Hay caché → cargar y renderizar al instante
+   2. Si caché está vencido (>12h) → sync bg silencioso
+   3. Sin caché + online  → sync con feedback visual
+   4. Sin caché + offline → mensaje de error
+   ════════════════════════════════════════════ */
 async function init() {
-  updateStatus(navigator.onLine ? 'online' : 'offline');
-  updateSyncMeta();
+  setPill(navigator.onLine ? 'online' : 'offline');
+  updateStatusBar();
 
-  const hasCached = cargarDesdeCache();
-  const stale     = cacheIsStale(CACHE_KEYS.dias);
-
-  if (hasCached) {
-    // Datos en caché: renderizar de inmediato
-    renderChips();
+  if (cacheCompleto()) {
+    /* ── RUTA RÁPIDA: renderizar desde caché ── */
+    cargarEnMemoria();
+    renderDias();
+    renderCapital();
     renderBanner();
-    updateSyncMeta();
+    $('sbarBtn').disabled = false;
 
+    const ts    = getCacheTs('dias');
+    const stale = !ts || (Date.now() - ts) > CACHE_TTL;
     if (stale && navigator.onLine) {
-      // Cache viejo: actualizar en background sin bloquear UI
-      setTimeout(() => sincronizar(true), 800);
+      // Refrescar en segundo plano sin interrumpir al usuario
+      setTimeout(() => sincronizar(true), 1000);
     }
+
   } else {
-    // Sin caché: intentar sync activo
+    /* ── PRIMERA VEZ o caché limpiado ── */
     if (navigator.onLine) {
+      $('synclog').classList.add('show');
       await sincronizar(false);
-      toggleSync(); // abrir panel para mostrar progreso la primera vez
     } else {
-      $('chipsPlazos').innerHTML  = '<span style="color:var(--muted);font-size:.8rem">📵 Sin conexión — no hay datos guardados</span>';
+      $('chipsDias').innerHTML  = '<div class="empty"><span>📵</span>Sin conexión y sin datos guardados.<br>Conecta internet para la primera carga.</div>';
       $('chipsCapital').innerHTML = '';
-      toast('Sin conexión y sin caché local', 3500);
-      updateStatus('offline');
+      toast('Sin caché y sin conexión', 3500);
     }
+    $('sbarBtn').disabled = false;
   }
 
-  // Listeners de conectividad
-  window.addEventListener('online',  () => { updateStatus('online');  sincronizar(true); });
-  window.addEventListener('offline', () => { updateStatus('offline'); toast('📵 Modo offline — usando caché'); });
+  /* Escuchar cambios de red */
+  window.addEventListener('online',  () => {
+    setPill('online'); toast('Conexión restaurada');
+    sincronizar(!cacheCompleto()); // silencioso si ya tiene datos, explícito si no
+  });
+  window.addEventListener('offline', () => {
+    setPill('offline'); toast('📵 Offline — operando con caché');
+  });
 }
 
 init();
