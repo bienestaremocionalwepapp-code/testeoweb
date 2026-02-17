@@ -1,656 +1,880 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>TEST - Simulador Completo con Cache</title>
-    <style>
-        body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .container { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 20px; }
-        h1 { color: #667eea; text-align: center; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 0.9em; }
-        .box { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 10px; border: 2px solid #e0e0e0; }
-        button { background: #667eea; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; }
-        button:hover { background: #5568d3; }
-        .success { color: #28a745; font-weight: bold; padding: 10px; background: #d4edda; border-radius: 5px; margin: 5px 0; }
-        .error { color: #dc3545; font-weight: bold; padding: 10px; background: #f8d7da; border-radius: 5px; margin: 5px 0; }
-        .warning { color: #856404; padding: 10px; background: #fff3cd; border-radius: 5px; margin: 5px 0; }
-        .info { color: #004085; padding: 10px; background: #cce5ff; border-radius: 5px; margin: 5px 0; }
-        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em; }
-        .data-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
-        .data-box { background: white; padding: 15px; border-radius: 8px; border: 2px solid #667eea; }
-        .data-box h4 { color: #667eea; margin-bottom: 10px; }
-        select, input[type="number"] { width: 100%; padding: 10px; border: 2px solid #667eea; border-radius: 8px; font-size: 1em; box-sizing: border-box; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimPréstamo — Simulador Inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── TOKENS ─── */
+  :root {
+    --bg:       #0a0d12;
+    --surface:  #111620;
+    --card:     #161c28;
+    --border:   #1e2838;
+    --accent:   #00d4aa;
+    --accent2:  #0099ff;
+    --warn:     #f59e0b;
+    --danger:   #ef4444;
+    --text:     #e8edf5;
+    --muted:    #5a6a82;
+    --soft:     #8fa0b8;
+    --radius:   14px;
+    --radius-sm:8px;
+    --shadow:   0 8px 32px rgba(0,0,0,.45);
+    --glow:     0 0 40px rgba(0,212,170,.12);
+  }
+
+  /* ─── RESET ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── FONDO MESH ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 10%, rgba(0,212,170,.07) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 40% at 10% 90%, rgba(0,153,255,.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  /* ─── LAYOUT ─── */
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 16px 48px; }
+
+  /* ─── HEADER ─── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 8px;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.35rem; letter-spacing: -0.03em; }
+  .logo span { color: var(--accent); }
+
+  /* ─── STATUS PILL ─── */
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 99px;
+    font-size: .72rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transition: all .4s ease;
+  }
+  .status-pill.online  { border-color: rgba(0,212,170,.3); color: var(--accent); }
+  .status-pill.offline { border-color: rgba(245,158,11,.3);  color: var(--warn); }
+  .status-pill.syncing { border-color: rgba(0,153,255,.3);   color: var(--accent2); }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  /* ─── BANNER ─── */
+  .banner {
+    display: none;
+    align-items: center; gap: 10px;
+    margin: 10px 0 6px;
+    padding: 11px 16px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(0,212,170,.08) 0%, rgba(0,153,255,.06) 100%);
+    border: 1px solid rgba(0,212,170,.2);
+    font-size: .85rem; color: var(--accent);
+    animation: slideDown .4s ease;
+  }
+  .banner.show { display: flex; }
+  .banner-icon { font-size: 1rem; flex-shrink: 0; }
+  @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── SECTION TITLE ─── */
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: .68rem; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted);
+    margin: 28px 0 12px;
+  }
+
+  /* ─── CARD ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ─── SELECTOR GRID ─── */
+  .selector-label {
+    font-size: .78rem; font-weight: 500; color: var(--soft);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .selector-label svg { opacity: .6; }
+
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 20px;
+  }
+  .chip {
+    padding: 8px 16px;
+    border-radius: 99px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--soft);
+    font-size: .83rem; font-weight: 500;
+    cursor: pointer;
+    transition: all .18s ease;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip.active {
+    border-color: var(--accent);
+    background: rgba(0,212,170,.12);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ─── CAPITAL CHIPS (grid 3 cols) ─── */
+  .chips.capital { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .chips.capital .chip { text-align: center; border-radius: var(--radius-sm); padding: 10px 8px; }
+
+  /* ─── DIVIDER ─── */
+  .divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
+
+  /* ─── CALCULAR BTN ─── */
+  .btn-calc {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: none;
+    background: linear-gradient(135deg, var(--accent) 0%, #00b890 100%);
+    color: #001a14;
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: all .2s ease;
+    box-shadow: 0 4px 20px rgba(0,212,170,.25);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    position: relative; overflow: hidden;
+  }
+  .btn-calc:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,212,170,.35); }
+  .btn-calc:active { transform: translateY(0); }
+  .btn-calc:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn-calc .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,.25);
+    transform: scale(0);
+    animation: ripple .5s linear;
+    pointer-events: none;
+  }
+  @keyframes ripple { to{ transform:scale(4); opacity:0; } }
+
+  /* ─── RESULTADO ─── */
+  #resultado { overflow: hidden; transition: all .35s ease; }
+
+  .result-card {
+    margin-top: 20px;
+    background: var(--card);
+    border: 1px solid rgba(0,212,170,.25);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--glow), var(--shadow);
+    animation: fadeUp .4s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  .result-header {
+    background: linear-gradient(135deg, rgba(0,212,170,.12) 0%, rgba(0,153,255,.08) 100%);
+    border-bottom: 1px solid rgba(0,212,170,.15);
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .result-header .label { font-size: .72rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 6px; }
+  .result-header .amount {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.4rem; font-weight: 800; color: var(--accent);
+    letter-spacing: -.03em; line-height: 1;
+  }
+  .result-header .sub { font-size: .78rem; color: var(--soft); margin-top: 4px; }
+
+  .result-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .result-item {
+    padding: 16px 18px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .result-item:nth-child(2n) { border-right: none; }
+  .result-item:nth-last-child(-n+2) { border-bottom: none; }
+  .result-item .ri-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+  .result-item .ri-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem; font-weight: 700; color: var(--text);
+  }
+  .result-item .ri-value.accent { color: var(--accent); }
+  .result-item .ri-value.gold   { color: #fbbf24; }
+
+  /* ─── CACHE BADGE ─── */
+  .cache-badge {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px;
+    background: var(--surface);
+    font-size: .7rem; color: var(--muted);
+  }
+  .cache-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+
+  /* ─── SYNC PANEL (admin) ─── */
+  .sync-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%;
+    margin-top: 28px;
+    background: none; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px;
+    color: var(--muted); font-size: .78rem; font-weight: 500;
+    cursor: pointer; transition: all .2s;
+  }
+  .sync-toggle:hover { border-color: var(--soft); color: var(--soft); }
+  .sync-toggle svg { transition: transform .3s; }
+  .sync-toggle.open svg { transform: rotate(180deg); }
+
+  .sync-panel {
+    display: none;
+    flex-direction: column; gap: 10px;
+    margin-top: 10px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    animation: fadeUp .25s ease;
+  }
+  .sync-panel.show { display: flex; }
+
+  .sync-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+  }
+  .sync-info { font-size: .78rem; color: var(--soft); }
+  .sync-info strong { color: var(--text); display: block; font-size: .82rem; }
+
+  .btn-sync {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(0,153,255,.4);
+    background: rgba(0,153,255,.08);
+    color: var(--accent2);
+    font-size: .78rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn-sync:hover { background: rgba(0,153,255,.16); }
+  .btn-sync:disabled { opacity:.4; cursor: not-allowed; }
+
+  /* LOG */
+  .sync-log {
+    font-size: .72rem;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--muted);
+    line-height: 1.8;
+    max-height: 120px;
+    overflow-y: auto;
+    display: none;
+  }
+  .sync-log.show { display: block; }
+  .log-ok   { color: var(--accent); }
+  .log-warn { color: var(--warn); }
+  .log-err  { color: var(--danger); }
+  .log-info { color: var(--accent2); }
+
+  /* ─── EMPTY STATE ─── */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: .85rem;
+  }
+  .empty .icon { font-size: 2.5rem; margin-bottom: 10px; opacity: .4; }
+
+  /* ─── SKELETON ─── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--card) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 99px; height: 36px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 11px 20px; border-radius: 99px;
+    font-size: .82rem; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap; z-index: 100;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar {
+    height: 2px; background: var(--border); border-radius: 99px;
+    margin: 12px 0 0; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    transition: width .4s ease;
+  }
+
+  /* ─── MOBILE FINE TUNE ─── */
+  @media (max-width: 360px) {
+    .result-header .amount { font-size: 2rem; }
+    .chips.capital { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
 </head>
 <body>
 
-    <!-- ============================================ -->
-    <!-- CALCULADOR CON STORAGE                       -->
-    <!-- ============================================ -->
-    <div class="container">
-        <h1>🧮 Calculador desde Cache</h1>
-        <p class="subtitle">Usa SOLO datos guardados en localStorage — funciona offline</p>
+<div class="app">
 
-        <div class="box">
-            <h2>🧮 Paso 5: Calculador - Verificar Datos del Cache</h2>
-            <p class="info">📋 Este calculador usa SOLO los datos guardados en localStorage</p>
-
-            <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 10px;">
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; color: #667eea; margin-bottom: 5px;">
-                        📅 Selecciona Plazo:
-                    </label>
-                    <select id="calcDias">
-                        <option value="">-- Selecciona días --</option>
-                    </select>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; color: #667eea; margin-bottom: 5px;">
-                        💰 Selecciona Capital:
-                    </label>
-                    <select id="calcCapital">
-                        <option value="">-- Selecciona capital --</option>
-                    </select>
-                </div>
-
-                <button onclick="calcularDesdeCache()" style="width: 100%; background: #28a745; font-size: 1.1em; padding: 15px;">
-                    🧮 CALCULAR DESDE CACHE
-                </button>
-            </div>
-
-            <div id="resultadoCalculo"></div>
-        </div>
+  <!-- ─── HEADER ─── -->
+  <header class="header">
+    <div class="logo">Sim<span>Préstamo</span></div>
+    <div class="status-pill" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">—</span>
     </div>
-    <!-- FIN CALCULADOR CON STORAGE -->
+  </header>
 
+  <!-- ─── BANNER ─── -->
+  <div class="banner" id="banner">
+    <span class="banner-icon">📢</span>
+    <span id="bannerText"></span>
+  </div>
 
-    <!-- ============================================ -->
-    <!-- TEST PRINCIPAL                               -->
-    <!-- ============================================ -->
-    <div class="container">
-        <h1>🔬 TEST - Con Normalización Total</h1>
-        <p class="subtitle">✅ Coma (,) se convierte automáticamente a punto (.)</p>
+  <!-- ─── SIMULADOR ─── -->
+  <p class="section-title">Simulador de préstamo</p>
 
-        <div class="box">
-            <h2>📊 Paso 1: Leer Datos de Google Sheets</h2>
-            <button onclick="leerDatosReales()">🔍 Leer Datos con Normalización</button>
-            <div id="datosReales"></div>
-        </div>
+  <div class="card">
 
-        <div class="box">
-            <h2>💾 Paso 2: Comparar con localStorage</h2>
-            <button onclick="compararDatos()">🔄 Comparar Sheets vs Cache</button>
-            <div id="comparacion"></div>
-        </div>
-
-        <div class="box">
-            <h2>✅ Paso 3: Guardar en localStorage</h2>
-            <button onclick="guardarEnCache()">💾 Guardar en Cache</button>
-            <button onclick="limpiarCache()" style="background: #dc3545;">🗑️ Limpiar Cache</button>
-            <div id="guardadoStatus"></div>
-        </div>
-
-        <div class="box">
-            <h2>📱 Paso 4: Ver localStorage</h2>
-            <button onclick="mostrarCache()">👁️ Ver Cache Actual</button>
-            <div id="cacheActual"></div>
-        </div>
+    <!-- PLAZO -->
+    <div class="selector-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Plazo (días)
+    </div>
+    <div class="chips" id="chipsPlazos">
+      <div class="skeleton" style="width:80px"></div>
+      <div class="skeleton" style="width:80px"></div>
+      <div class="skeleton" style="width:80px"></div>
     </div>
 
-
-    <script>
-        const SHEET_ID = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
-
-        // Variable en memoria: guarda los últimos datos traídos desde Sheets
-        let datosDesdeSheets = {
-            dias: null,
-            capital: null,
-            interes: null,
-            banner: null
-        };
-
-        // ============================================
-        // UTILIDAD: FORMATEAR MONEDA
-        // ============================================
-        function formatMoney(num) {
-            return '$' + num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-        }
-
-        // ============================================
-        // 1. NORMALIZACIÓN
-        // ============================================
-        function normalizarNumeroSheets(valor) {
-            if (typeof valor === 'number') {
-                return isFinite(valor) ? valor : NaN;
-            }
-            if (valor == null || valor === '') return NaN;
-
-            let texto = String(valor).trim();
-            texto = texto.replace(/%/g, '');
-            texto = texto.replace(/,/g, '.');
-
-            const partes = texto.split('.');
-            if (partes.length > 2) {
-                texto = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
-            }
-
-            const numero = parseFloat(texto);
-            return isNaN(numero) || !isFinite(numero) ? NaN : numero;
-        }
-
-        // ============================================
-        // 2. CACHE: guardar y leer desde localStorage
-        // ============================================
-        function saveToCache(key, data) {
-            const cacheData = {
-                data: data,
-                timestamp: new Date().getTime()
-            };
-            localStorage.setItem(`simulador_${key}`, JSON.stringify(cacheData));
-            console.log(`✅ Guardado en cache: simulador_${key}`, data);
-        }
-
-        function getFromCache(key) {
-            try {
-                const cached = localStorage.getItem(`simulador_${key}`);
-                if (!cached) return null;
-                const cacheData = JSON.parse(cached);
-                return cacheData.data;
-            } catch (error) {
-                console.error(`❌ Error al leer cache: ${key}`, error);
-                return null;
-            }
-        }
-
-        // ============================================
-        // 3. HELPERS SHEETS
-        // ============================================
-        async function leerHojaCompleta(nombreHoja) {
-            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${nombreHoja}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            const text = await response.text();
-            const jsonStr = text.replace(/^[\s\S]*?setResponse\(/, '').replace(/\);[\s\S]*$/, '');
-            const json = JSON.parse(jsonStr);
-            return json.table.rows || [];
-        }
-
-        async function leerColumnaA(nombreHoja) {
-            const rows = await leerHojaCompleta(nombreHoja);
-            const valores = [];
-            rows.forEach((row, idx) => {
-                const valorRAW = row?.c?.[0]?.v;
-                if (idx === 0 && isNaN(parseFloat(valorRAW))) return; // saltar encabezado
-                const num = normalizarNumeroSheets(valorRAW);
-                if (!isNaN(num)) valores.push(num);
-            });
-            return valores;
-        }
-
-        async function leerInteres() {
-            const rows = await leerHojaCompleta('Interes');
-            const valores = [];
-
-            rows.forEach((row, idx) => {
-                const valorRAW = row?.c?.[0]?.v;
-                const formato = row?.c?.[0]?.f;
-                if (idx === 0 && isNaN(parseFloat(valorRAW))) return;
-
-                let num = normalizarNumeroSheets(valorRAW);
-                if (isNaN(num)) return;
-                if (num > 1000) return; // rechazar fechas
-
-                if (formato && formato.includes('%')) {
-                    num = num * 100;
-                } else if (num > 0 && num < 1) {
-                    num = num * 100;
-                }
-
-                if (num < 0 || num > 100) return;
-                valores.push(num);
-            });
-
-            // Mapear dias → interes
-            const diasValores = await leerColumnaA('Dias');
-            const interesesObj = {};
-            const minLength = Math.min(diasValores.length, valores.length);
-            for (let i = 0; i < minLength; i++) {
-                interesesObj[diasValores[i]] = valores[i];
-            }
-            return interesesObj;
-        }
-
-        async function leerBanner() {
-            const rows = await leerHojaCompleta('Banner');
-            if (rows.length > 1) {
-                const mensaje = rows[1]?.c?.[0]?.v || '';
-                return { activo: mensaje.trim() !== '', texto: mensaje };
-            }
-            return { activo: false, texto: '' };
-        }
-
-        // ============================================
-        // 4. POBLAR SELECT DE DÍAS DESDE CACHE
-        // ============================================
-        function poblarSelectDias() {
-            const select = document.getElementById('calcDias');
-            const diasCache = getFromCache('dias');
-
-            // Limpiar opciones previas excepto la primera
-            while (select.options.length > 1) {
-                select.remove(1);
-            }
-
-            if (!diasCache || diasCache.length === 0) {
-                console.warn('⚠️ No hay días en cache para poblar el select');
-                return;
-            }
-
-            diasCache.forEach(dia => {
-                const option = document.createElement('option');
-                option.value = dia;
-                option.textContent = `${dia} días`;
-                select.appendChild(option);
-            });
-
-            console.log('✅ Select poblado con días del cache:', diasCache);
-        }
-
-        // ============================================
-        // 4b. POBLAR SELECT DE CAPITAL DESDE CACHE
-        // ============================================
-        function poblarSelectCapital() {
-            const select = document.getElementById('calcCapital');
-            const capitalCache = getFromCache('capital');
-
-            while (select.options.length > 1) select.remove(1);
-
-            if (!capitalCache || capitalCache.length === 0) {
-                console.warn('⚠️ No hay capitales en cache para poblar el select');
-                return;
-            }
-
-            capitalCache.forEach(cap => {
-                const option = document.createElement('option');
-                option.value = cap;
-                option.textContent = '$' + cap.toLocaleString('es-MX');
-                select.appendChild(option);
-            });
-
-            console.log('✅ Select capital poblado desde cache:', capitalCache);
-        }
-
-        // ============================================
-        // 5. CALCULAR DESDE CACHE  ← FUNCIÓN PRINCIPAL
-        // ============================================
-        function calcularDesdeCache() {
-            const dias = parseInt(document.getElementById('calcDias').value);
-            const capital = parseFloat(document.getElementById('calcCapital').value);
-            const resultDiv = document.getElementById('resultadoCalculo');
-
-            console.log('\n========================================');
-            console.log('CALCULANDO DESDE CACHE');
-            console.log('========================================');
-
-            // --- VALIDAR INPUTS DEL USUARIO ---
-            if (!dias) {
-                resultDiv.innerHTML = '<div class="warning">⚠️ Selecciona un plazo</div>';
-                return;
-            }
-            if (!capital || isNaN(capital)) {
-                resultDiv.innerHTML = '<div class="warning">⚠️ Selecciona un capital válido</div>';
-                return;
-            }
-
-            console.log('Input Usuario:', { dias, capital });
-
-            // --- LEER DESDE LOCALSTORAGE ---
-            const diasCache    = getFromCache('dias');
-            const capitalCache = getFromCache('capital');
-            const interesCache = getFromCache('interes');
-            const bannerCache  = getFromCache('banner_config');
-
-            console.log('Datos en localStorage:', { diasCache, capitalCache, interesCache, bannerCache });
-
-            // --- VALIDAR EXISTENCIA DE DATOS EN CACHE ---
-            if (!diasCache || diasCache.length === 0) {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <strong>❌ ERROR: No hay días en cache</strong><br>
-                        <strong>localStorage["simulador_dias"]:</strong> ${diasCache ? 'Vacío' : 'No existe'}<br><br>
-                        <strong>Solución:</strong>
-                        <ol style="margin:10px 0;padding-left:20px;">
-                            <li>Paso 1: "Leer Datos de Sheets"</li>
-                            <li>Paso 3: "Guardar en Cache"</li>
-                            <li>Regresa aquí y calcula</li>
-                        </ol>
-                    </div>`;
-                return;
-            }
-
-            if (!capitalCache || capitalCache.length === 0) {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <strong>❌ ERROR: No hay capitales en cache</strong><br>
-                        <strong>localStorage["simulador_capital"]:</strong> ${capitalCache ? 'Vacío' : 'No existe'}
-                    </div>`;
-                return;
-            }
-
-            if (!interesCache || Object.keys(interesCache).length === 0) {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <strong>❌ ERROR: No hay tasas de interés en cache</strong><br>
-                        <strong>localStorage["simulador_interes"]:</strong> ${interesCache ? 'Vacío' : 'No existe'}
-                    </div>`;
-                return;
-            }
-
-            // --- VERIFICAR QUE EXISTA TASA PARA LOS DÍAS SELECCIONADOS ---
-            if (!(dias in interesCache)) {
-                const diasDisponibles = Object.keys(interesCache).join(', ');
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <strong>❌ ERROR: No hay tasa para ${dias} días</strong><br><br>
-                        <strong>Días disponibles:</strong> ${diasDisponibles}<br>
-                        <pre>${JSON.stringify(interesCache, null, 2)}</pre>
-                    </div>`;
-                console.error(`❌ No existe interés para ${dias} días`);
-                return;
-            }
-
-            // ============================================
-            // ✅ CÁLCULO FINAL CON DATOS DEL CACHE
-            // ============================================
-            const interesPorc  = interesCache[dias];          // tasa % del cache
-            const interesTotal = capital * (interesPorc / 100); // interés en $
-            const totalPrestar = capital + interesTotal;        // monto total a cobrar
-            const pagoDiario   = totalPrestar / dias;           // cuota diaria
-
-            console.log('✅ CÁLCULO:', { interesPorc, interesTotal, totalPrestar, pagoDiario });
-
-            // --- MOSTRAR RESULTADO ---
-            resultDiv.innerHTML = `
-                <div style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);
-                            padding:25px;border-radius:15px;color:white;margin-top:20px;
-                            box-shadow:0 10px 30px rgba(40,167,69,0.4);">
-
-                    <h3 style="text-align:center;margin-bottom:20px;font-size:1.5em;">
-                        ✅ CÁLCULO EXITOSO DESDE CACHE
-                    </h3>
-
-                    <div style="background:rgba(255,255,255,0.15);padding:20px;border-radius:10px;">
-                        <div style="display:grid;gap:12px;">
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
-                                <span>💰 Capital Solicitado:</span>
-                                <strong style="font-size:1.2em;">${formatMoney(capital)}</strong>
-                            </div>
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
-                                <span>📈 Tasa de Interés (cache):</span>
-                                <strong style="font-size:1.2em;">${interesPorc}%</strong>
-                            </div>
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
-                                <span>📊 Interés Total:</span>
-                                <strong style="font-size:1.2em;">${formatMoney(interesTotal)}</strong>
-                            </div>
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
-                                <span>💵 Total a Pagar:</span>
-                                <strong style="font-size:1.3em;color:#FFD700;">${formatMoney(totalPrestar)}</strong>
-                            </div>
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.3);">
-                                <span>📅 Plazo:</span>
-                                <strong style="font-size:1.2em;">${dias} días</strong>
-                            </div>
-
-                            <div style="display:flex;justify-content:space-between;padding:10px 0;">
-                                <span>💳 Pago Diario:</span>
-                                <strong style="font-size:1.3em;color:#90EE90;">${formatMoney(pagoDiario)}</strong>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div style="margin-top:20px;padding:15px;background:rgba(255,255,255,0.2);border-radius:10px;font-size:0.95em;line-height:1.6;">
-                        <strong>📦 Fuente de Datos (localStorage):</strong><br>
-                        ✅ simulador_dias: ${diasCache.length} valores<br>
-                        ✅ simulador_capital: ${capitalCache.length} valores<br>
-                        ✅ simulador_interes: ${Object.keys(interesCache).length} tasas<br>
-                        ✅ Tasa usada: interesCache[${dias}] = ${interesPorc}%
-                    </div>
-                </div>
-
-                <div class="success" style="margin-top:15px;">
-                    <strong>🎉 PROCESO COMPLETO EXITOSO</strong><br><br>
-                    <ol style="margin:10px 0;padding-left:20px;line-height:1.8;">
-                        <li>✅ Datos leídos desde Google Sheets</li>
-                        <li>✅ Normalizados (coma → punto automático)</li>
-                        <li>✅ Guardados en localStorage</li>
-                        <li>✅ Cálculo realizado SOLO con datos del cache</li>
-                    </ol>
-                </div>
-
-                <div class="info" style="margin-top:15px;">
-                    <strong>💡 Prueba Offline:</strong><br>
-                    F12 → Network → Activar "Offline" → Recargar la página → sigue funcionando 🚀
-                </div>
-            `;
-        }
-
-        // ============================================
-        // 6. LEER DATOS REALES DESDE SHEETS
-        //    → Con internet: lee, auto-guarda cache y puebla selects
-        //    → Sin internet: rescata cache existente y avisa
-        // ============================================
-        async function leerDatosReales() {
-            const div = document.getElementById('datosReales');
-
-            // ── SIN CONEXIÓN: usar cache directamente ──
-            if (!navigator.onLine) {
-                const diasCache = getFromCache('dias');
-                if (diasCache && diasCache.length > 0) {
-                    poblarSelectDias();
-                    poblarSelectCapital();
-                    div.innerHTML = `
-                        <div class="warning">
-                            📵 <strong>Sin internet</strong> — usando datos del cache local<br>
-                            ✅ El calculador sigue funcionando con los datos guardados
-                        </div>`;
-                } else {
-                    div.innerHTML = `
-                        <div class="error">
-                            ❌ Sin internet y sin cache guardado.<br>
-                            Conecta internet y presiona "Leer Datos" para guardar el cache por primera vez.
-                        </div>`;
-                }
-                return;
-            }
-
-            div.innerHTML = '<p class="info">⏳ Leyendo datos con normalización automática...</p>';
-            let html = '<h3>📊 Datos REALES desde Sheets:</h3>';
-
-            try {
-                html += '<p>📅 Leyendo Dias...</p>';
-                const dias = await leerColumnaA('Dias');
-                datosDesdeSheets.dias = dias;
-                html += `<div class="success">✅ DIAS: ${JSON.stringify(dias)}</div>`;
-
-                html += '<p>💰 Leyendo Capital...</p>';
-                const capital = await leerColumnaA('Capital');
-                datosDesdeSheets.capital = capital;
-                html += `<div class="success">✅ CAPITAL: ${JSON.stringify(capital)}</div>`;
-
-                html += '<p>📊 Leyendo Interes...</p>';
-                const interes = await leerInteres();
-                datosDesdeSheets.interes = interes;
-                html += `<div class="success">✅ INTERES:<pre>${JSON.stringify(interes, null, 2)}</pre></div>`;
-
-                html += '<p>🎌 Leyendo Banner...</p>';
-                const banner = await leerBanner();
-                datosDesdeSheets.banner = banner;
-                html += `<div class="success">✅ BANNER: "${banner.texto}"</div>`;
-
-                // ✅ AUTO-GUARDAR EN CACHE SIEMPRE QUE HAY CONEXIÓN
-                saveToCache('dias',          datosDesdeSheets.dias);
-                saveToCache('capital',       datosDesdeSheets.capital);
-                saveToCache('interes',       datosDesdeSheets.interes);
-                saveToCache('banner_config', datosDesdeSheets.banner);
-
-                // ✅ POBLAR SELECTS INMEDIATAMENTE
-                poblarSelectDias();
-                poblarSelectCapital();
-
-                html += '<div class="success"><strong>🎉 Datos listos y guardados en cache automáticamente</strong></div>';
-                html += '<div class="info">📵 Ahora puedes usar el calculador incluso sin internet</div>';
-
-            } catch (error) {
-                // ── ERROR DE RED: rescatar desde cache ──
-                console.error('Error de red:', error);
-                const diasCache = getFromCache('dias');
-                if (diasCache && diasCache.length > 0) {
-                    poblarSelectDias();
-                    poblarSelectCapital();
-                    html += `
-                        <div class="warning">
-                            ⚠️ No se pudo conectar con Sheets: ${error.message}<br>
-                            ✅ <strong>Usando cache guardado — el calculador sigue funcionando</strong>
-                        </div>`;
-                } else {
-                    html += `
-                        <div class="error">
-                            ❌ Error: ${error.message}<br>
-                            No hay cache de respaldo. Verifica tu conexión e intenta de nuevo.
-                        </div>`;
-                }
-            }
-
-            div.innerHTML = html;
-        }
-
-        // ============================================
-        // 7. COMPARAR SHEETS VS CACHE
-        // ============================================
-        async function compararDatos() {
-            const div = document.getElementById('comparacion');
-
-            if (!datosDesdeSheets.dias) {
-                div.innerHTML = '<div class="warning">⚠️ Primero lee los datos (Paso 1)</div>';
-                return;
-            }
-
-            const diasCache    = getFromCache('dias');
-            const capitalCache = getFromCache('capital');
-            const interesCache = getFromCache('interes');
-            const bannerCache  = getFromCache('banner_config');
-
-            let html = '<h3>🔄 Comparación:</h3><div class="data-compare">';
-
-            html += '<div class="data-box"><h4>📅 DIAS</h4>';
-            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.dias, null, 2) + '</pre>';
-            html += '<strong>localStorage:</strong><pre>' + (diasCache ? JSON.stringify(diasCache, null, 2) : '❌ Vacío') + '</pre></div>';
-
-            html += '<div class="data-box"><h4>💰 CAPITAL</h4>';
-            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.capital, null, 2) + '</pre>';
-            html += '<strong>localStorage:</strong><pre>' + (capitalCache ? JSON.stringify(capitalCache, null, 2) : '❌ Vacío') + '</pre></div>';
-
-            html += '<div class="data-box"><h4>📊 INTERES</h4>';
-            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.interes, null, 2) + '</pre>';
-            html += '<strong>localStorage:</strong><pre>' + (interesCache ? JSON.stringify(interesCache, null, 2) : '❌ Vacío') + '</pre></div>';
-
-            html += '<div class="data-box"><h4>🎌 BANNER</h4>';
-            html += '<strong>Google Sheets:</strong><pre>' + JSON.stringify(datosDesdeSheets.banner, null, 2) + '</pre>';
-            html += '<strong>localStorage:</strong><pre>' + (bannerCache ? JSON.stringify(bannerCache, null, 2) : '❌ Vacío') + '</pre></div>';
-
-            html += '</div>';
-            div.innerHTML = html;
-        }
-
-        // ============================================
-        // 8. GUARDAR EN CACHE → re-poblar select
-        // ============================================
-        async function guardarEnCache() {
-            const div = document.getElementById('guardadoStatus');
-
-            if (!datosDesdeSheets.dias) {
-                div.innerHTML = '<div class="error">❌ Primero lee los datos (Paso 1)</div>';
-                return;
-            }
-
-            div.innerHTML = '<p>💾 Guardando...</p>';
-
-            try {
-                saveToCache('dias',         datosDesdeSheets.dias);
-                saveToCache('capital',      datosDesdeSheets.capital);
-                saveToCache('interes',      datosDesdeSheets.interes);
-                saveToCache('banner_config', datosDesdeSheets.banner);
-
-                div.innerHTML = '<div class="success">✅ Datos normalizados guardados en localStorage</div>';
-
-                // ✅ Actualizar el select del calculador con los nuevos días
-                poblarSelectDias();
-                // ✅ Actualizar el select del calculador con los capitales
-                poblarSelectCapital();
-
-                mostrarCache();
-
-            } catch (error) {
-                div.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
-            }
-        }
-
-        // ============================================
-        // 9. MOSTRAR CACHE
-        // ============================================
-        function mostrarCache() {
-            const div = document.getElementById('cacheActual');
-            const dias    = getFromCache('dias');
-            const capital = getFromCache('capital');
-            const interes = getFromCache('interes');
-            const banner  = getFromCache('banner_config');
-
-            div.innerHTML = `
-                <h3>📱 localStorage Actual:</h3>
-                <pre>DIAS:\n${dias    ? JSON.stringify(dias, null, 2)    : '❌ Vacío'}\n\n` +
-                    `CAPITAL:\n${capital ? JSON.stringify(capital, null, 2) : '❌ Vacío'}\n\n` +
-                    `INTERES:\n${interes ? JSON.stringify(interes, null, 2) : '❌ Vacío'}\n\n` +
-                    `BANNER:\n${banner  ? JSON.stringify(banner, null, 2)  : '❌ Vacío'}</pre>`;
-        }
-
-        // ============================================
-        // 10. LIMPIAR CACHE
-        // ============================================
-        function limpiarCache() {
-            if (confirm('¿Limpiar TODO el localStorage?')) {
-                localStorage.removeItem('simulador_dias');
-                localStorage.removeItem('simulador_capital');
-                localStorage.removeItem('simulador_interes');
-                localStorage.removeItem('simulador_banner_config');
-                alert('✅ Cache limpiado');
-                mostrarCache();
-                // Reset selects
-                const select = document.getElementById('calcDias');
-                while (select.options.length > 1) select.remove(1);
-                const selectCap = document.getElementById('calcCapital');
-                while (selectCap.options.length > 1) selectCap.remove(1);
-            }
-        }
-
-        // ============================================
-        // 11. INICIALIZACIÓN
-        // ============================================
-        window.addEventListener('load', () => {
-            console.log('🧪 Simulador iniciado — NORMALIZACIÓN TOTAL');
-            console.log('📊 Sheet ID:', SHEET_ID);
-            console.log('✅ Coma (,) → Punto (.) automático');
-            mostrarCache();
-            poblarSelectDias();     // Si ya hay cache, el select de días se llena automáticamente
-            poblarSelectCapital();  // Si ya hay cache, el select de capital se llena automáticamente
-        });
-    </script>
+    <div class="divider"></div>
+
+    <!-- CAPITAL -->
+    <div class="selector-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Capital solicitado
+    </div>
+    <div class="chips capital" id="chipsCapital">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+
+    <button class="btn-calc" id="btnCalc" disabled onclick="calcular(event)">
+      Calcular préstamo
+    </button>
+  </div>
+
+  <!-- ─── RESULTADO ─── -->
+  <div id="resultado"></div>
+
+  <!-- ─── SYNC PANEL (admin/técnico) ─── -->
+  <button class="sync-toggle" id="syncToggle" onclick="toggleSync()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 3 18 9"/><polyline points="18 15 12 21 6 15"/>
+    </svg>
+    Sincronización de datos
+  </button>
+
+  <div class="sync-panel" id="syncPanel">
+
+    <div class="sync-row">
+      <div class="sync-info">
+        <strong id="syncCacheInfo">Cargando…</strong>
+        Última sync: <span id="syncLastTime">—</span>
+      </div>
+      <button class="btn-sync" id="btnSync" onclick="sincronizar()">
+        ↻ Sincronizar
+      </button>
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display:none">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="sync-log" id="syncLog"></div>
+
+  </div>
+
+</div>
+
+<!-- ─── TOAST ─── -->
+<div id="toast"></div>
+
+<!-- ─────────────────────────────────────────── -->
+<script>
+/* ============================================
+   CONFIG
+   ============================================ */
+const SHEET_ID   = '19Viesr9Lhy347A9L03J_RuxftUhBduaYsBY206IO6X8';
+const CACHE_TTL  = 12 * 60 * 60 * 1000; // 12 h
+const CACHE_KEYS = { dias:'dias', capital:'capital', interes:'interes', banner:'banner' };
+
+/* ============================================
+   STATE
+   ============================================ */
+let state = {
+  plazo:   null,
+  capital: null,
+  cache: { dias:[], capital:[], interes:{}, banner:{activo:false,texto:''} }
+};
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+const $ = id => document.getElementById(id);
+
+function fmt(n) {
+  return '$' + n.toLocaleString('es-MX', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function toast(msg, duration = 2600) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function log(msg, type = 'info') {
+  const el = $('syncLog');
+  el.classList.add('show');
+  const span = document.createElement('span');
+  span.className = `log-${type}`;
+  const now = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  span.textContent = `[${now}] ${msg}\n`;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setProgress(pct) {
+  const bar  = $('progressBar');
+  const fill = $('progressFill');
+  if (pct === null) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  fill.style.width  = pct + '%';
+}
+
+/* ============================================
+   CACHÉ: localStorage wrapper
+   ============================================ */
+function cacheSet(key, data) {
+  try {
+    localStorage.setItem('sp_' + key, JSON.stringify({ data, ts: Date.now() }));
+  } catch(e) { console.warn('Cache write error', e); }
+}
+
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem('sp_' + key);
+    if (!raw) return null;
+    return JSON.parse(raw);           // { data, ts }
+  } catch(e) { return null; }
+}
+
+function cacheIsStale(key) {
+  const item = cacheGet(key);
+  if (!item) return true;
+  return (Date.now() - item.ts) > CACHE_TTL;
+}
+
+function cacheLastSync() {
+  // Toma el timestamp más reciente entre las 4 claves
+  let latest = null;
+  for (const k of Object.values(CACHE_KEYS)) {
+    const item = cacheGet(k);
+    if (item && (!latest || item.ts > latest)) latest = item.ts;
+  }
+  return latest;
+}
+
+/* ============================================
+   STATUS INDICATOR
+   ============================================ */
+function updateStatus(mode) {
+  const pill = $('statusPill');
+  const txt  = $('statusText');
+  pill.className = 'status-pill ' + mode;
+  txt.textContent = mode === 'online' ? 'Online' : mode === 'syncing' ? 'Sincronizando' : 'Offline';
+}
+
+/* ============================================
+   NORMALIZACIÓN (datos de Sheets)
+   ============================================ */
+function normalizar(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  if (!v) return NaN;
+  let s = String(v).trim().replace(/%/g,'').replace(/,/g,'.');
+  const parts = s.split('.');
+  if (parts.length > 2) s = parts.slice(0,-1).join('') + '.' + parts[parts.length-1];
+  const n = parseFloat(s);
+  return isNaN(n) || !isFinite(n) ? NaN : n;
+}
+
+/* ============================================
+   FETCH SHEETS
+   ============================================ */
+async function fetchSheet(sheet) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheet}`;
+  const r   = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status} en hoja "${sheet}"`);
+  const txt = await r.text();
+  const json = JSON.parse(txt.replace(/^[\s\S]*?setResponse\(/,'').replace(/\);[\s\S]*$/,''));
+  return json.table.rows || [];
+}
+
+async function fetchColA(sheet) {
+  const rows = await fetchSheet(sheet);
+  return rows
+    .filter((row, i) => { if (i===0 && isNaN(parseFloat(row?.c?.[0]?.v))) return false; return true; })
+    .map(row => normalizar(row?.c?.[0]?.v))
+    .filter(n => !isNaN(n));
+}
+
+async function fetchInteres(dias) {
+  const rows = await fetchSheet('Interes');
+  const vals = [];
+  rows.forEach((row, i) => {
+    if (i===0 && isNaN(parseFloat(row?.c?.[0]?.v))) return;
+    let n = normalizar(row?.c?.[0]?.v);
+    if (isNaN(n) || n > 1000) return;
+    const fmt = row?.c?.[0]?.f || '';
+    if (fmt.includes('%') || (n > 0 && n < 1)) n *= 100;
+    if (n < 0 || n > 100) return;
+    vals.push(n);
+  });
+  const obj = {};
+  const len = Math.min(dias.length, vals.length);
+  for (let i = 0; i < len; i++) obj[dias[i]] = vals[i];
+  return obj;
+}
+
+async function fetchBanner() {
+  const rows = await fetchSheet('Banner');
+  if (rows.length > 1) {
+    const txt = rows[1]?.c?.[0]?.v || '';
+    return { activo: txt.trim() !== '', texto: txt };
+  }
+  return { activo: false, texto: '' };
+}
+
+/* ============================================
+   SINCRONIZACIÓN PRINCIPAL
+   ============================================ */
+async function sincronizar(silent = false) {
+  if (!navigator.onLine) {
+    if (!silent) { toast('📵 Sin conexión — usando datos guardados'); }
+    updateStatus('offline');
+    return false;
+  }
+
+  updateStatus('syncing');
+  $('btnSync').disabled = true;
+  setProgress(5);
+  if (!silent) log('Iniciando sincronización con Google Sheets…', 'info');
+
+  try {
+    // 1. Días
+    const dias = await fetchColA('Dias');
+    if (!dias.length) throw new Error('Hoja "Dias" sin datos válidos');
+    cacheSet(CACHE_KEYS.dias, dias);
+    setProgress(30);
+    if (!silent) log(`✓ Días cargados: [${dias.join(', ')}]`, 'ok');
+
+    // 2. Capital
+    const capital = await fetchColA('Capital');
+    if (!capital.length) throw new Error('Hoja "Capital" sin datos válidos');
+    cacheSet(CACHE_KEYS.capital, capital);
+    setProgress(55);
+    if (!silent) log(`✓ Capitales: ${capital.length} montos`, 'ok');
+
+    // 3. Interés
+    const interes = await fetchInteres(dias);
+    if (!Object.keys(interes).length) throw new Error('Hoja "Interes" sin tasas válidas');
+    cacheSet(CACHE_KEYS.interes, interes);
+    setProgress(80);
+    if (!silent) log(`✓ Tasas: ${Object.keys(interes).length} combinaciones`, 'ok');
+
+    // 4. Banner
+    const banner = await fetchBanner();
+    cacheSet(CACHE_KEYS.banner, banner);
+    setProgress(100);
+    if (!silent) log('✓ Banner actualizado', 'ok');
+
+    // Aplicar datos
+    state.cache = { dias, capital, interes, banner };
+    renderChips();
+    renderBanner();
+    updateStatus('online');
+    updateSyncMeta();
+
+    if (!silent) {
+      log('Sincronización completa ✓', 'ok');
+      toast('✓ Datos actualizados');
+    }
+
+    setTimeout(() => setProgress(null), 700);
+    $('btnSync').disabled = false;
+    return true;
+
+  } catch (err) {
+    log(`✗ Error: ${err.message}`, 'err');
+    if (!silent) toast('⚠️ Error al sincronizar');
+    updateStatus(navigator.onLine ? 'online' : 'offline');
+    setTimeout(() => setProgress(null), 400);
+    $('btnSync').disabled = false;
+    return false;
+  }
+}
+
+/* ============================================
+   CARGAR DESDE CACHÉ
+   ============================================ */
+function cargarDesdeCache() {
+  const d = cacheGet(CACHE_KEYS.dias);
+  const c = cacheGet(CACHE_KEYS.capital);
+  const i = cacheGet(CACHE_KEYS.interes);
+  const b = cacheGet(CACHE_KEYS.banner);
+
+  const ok = d?.data?.length && c?.data?.length && i?.data && Object.keys(i.data).length;
+
+  if (ok) {
+    state.cache.dias    = d.data;
+    state.cache.capital = c.data;
+    state.cache.interes = i.data;
+    state.cache.banner  = b?.data || { activo:false, texto:'' };
+    return true;
+  }
+  return false;
+}
+
+/* ============================================
+   RENDER CHIPS
+   ============================================ */
+function renderChips() {
+  // Plazos
+  const cp = $('chipsPlazos');
+  cp.innerHTML = '';
+  if (!state.cache.dias.length) {
+    cp.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Sin datos — sincroniza primero</span>';
+    return;
+  }
+  state.cache.dias.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'chip' + (state.plazo === d ? ' active' : '');
+    el.textContent = d + ' días';
+    el.onclick = () => selectPlazo(d);
+    cp.appendChild(el);
+  });
+
+  // Capital
+  const cc = $('chipsCapital');
+  cc.innerHTML = '';
+  state.cache.capital.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'chip' + (state.capital === c ? ' active' : '');
+    el.textContent = '$' + c.toLocaleString('es-MX');
+    el.onclick = () => selectCapital(c);
+    cc.appendChild(el);
+  });
+
+  checkBtn();
+}
+
+function selectPlazo(d) {
+  state.plazo = d;
+  document.querySelectorAll('#chipsPlazos .chip').forEach(el => {
+    el.classList.toggle('active', parseInt(el.textContent) === d);
+  });
+  checkBtn();
+}
+
+function selectCapital(c) {
+  state.capital = c;
+  document.querySelectorAll('#chipsCapital .chip').forEach(el => {
+    el.classList.toggle('active', el.textContent === '$' + c.toLocaleString('es-MX'));
+  });
+  checkBtn();
+}
+
+function checkBtn() {
+  $('btnCalc').disabled = !(state.plazo && state.capital);
+}
+
+/* ============================================
+   BANNER
+   ============================================ */
+function renderBanner() {
+  const b = state.cache.banner;
+  const el = $('banner');
+  if (b?.activo && b?.texto?.trim()) {
+    $('bannerText').textContent = b.texto;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+/* ============================================
+   CALCULAR
+   ============================================ */
+function calcular(e) {
+  // Ripple
+  const btn  = $('btnCalc');
+  const rip  = document.createElement('span');
+  rip.className = 'ripple';
+  rip.style.cssText = `width:${btn.offsetWidth}px;height:${btn.offsetWidth}px;left:0;top:${(btn.offsetHeight - btn.offsetWidth)/2}px`;
+  btn.appendChild(rip);
+  setTimeout(() => rip.remove(), 520);
+
+  const { plazo, capital, cache: { dias, capital: caps, interes } } = state;
+
+  if (!plazo || !capital) { toast('Selecciona plazo y capital'); return; }
+  if (!interes[plazo] && interes[plazo] !== 0) { toast('Sin tasa para ese plazo'); return; }
+
+  const tasa         = interes[plazo];
+  const interesTotal = capital * (tasa / 100);
+  const totalPagar   = capital + interesTotal;
+  const pagoDiario   = totalPagar / plazo;
+
+  $('resultado').innerHTML = `
+    <div class="result-card">
+      <div class="result-header">
+        <div class="label">Total a pagar</div>
+        <div class="amount">${fmt(totalPagar)}</div>
+        <div class="sub">en ${plazo} días · ${tasa}% de interés</div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="ri-label">Capital</div>
+          <div class="ri-value">${fmt(capital)}</div>
+        </div>
+        <div class="result-item">
+          <div class="ri-label">Tasa aplicada</div>
+          <div class="ri-value accent">${tasa}%</div>
+        </div>
+        <div class="result-item">
+          <div class="ri-label">Interés generado</div>
+          <div class="ri-value gold">${fmt(interesTotal)}</div>
+        </div>
+        <div class="result-item">
+          <div class="ri-label">Pago diario</div>
+          <div class="ri-value accent">${fmt(pagoDiario)}</div>
+        </div>
+      </div>
+
+      <div class="cache-badge">
+        <div class="dot"></div>
+        Calculado con datos del caché local · ${new Date().toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'})}
+      </div>
+    </div>`;
+}
+
+/* ============================================
+   SYNC PANEL TOGGLE
+   ============================================ */
+function toggleSync() {
+  const panel  = $('syncPanel');
+  const toggle = $('syncToggle');
+  const show   = !panel.classList.contains('show');
+  panel.classList.toggle('show', show);
+  toggle.classList.toggle('open', show);
+}
+
+function updateSyncMeta() {
+  const ts = cacheLastSync();
+  const d  = cacheGet(CACHE_KEYS.dias);
+  const c  = cacheGet(CACHE_KEYS.capital);
+  const i  = cacheGet(CACHE_KEYS.interes);
+  const ok = d?.data?.length && c?.data?.length && i?.data;
+
+  $('syncCacheInfo').textContent = ok
+    ? `${d.data.length} plazos · ${c.data.length} montos · ${Object.keys(i.data).length} tasas`
+    : 'Sin datos en caché';
+
+  $('syncLastTime').textContent = ts
+    ? new Date(ts).toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+    : 'Nunca';
+}
+
+/* ============================================
+   INIT
+   ============================================ */
+async function init() {
+  updateStatus(navigator.onLine ? 'online' : 'offline');
+  updateSyncMeta();
+
+  const hasCached = cargarDesdeCache();
+  const stale     = cacheIsStale(CACHE_KEYS.dias);
+
+  if (hasCached) {
+    // Datos en caché: renderizar de inmediato
+    renderChips();
+    renderBanner();
+    updateSyncMeta();
+
+    if (stale && navigator.onLine) {
+      // Cache viejo: actualizar en background sin bloquear UI
+      setTimeout(() => sincronizar(true), 800);
+    }
+  } else {
+    // Sin caché: intentar sync activo
+    if (navigator.onLine) {
+      await sincronizar(false);
+      toggleSync(); // abrir panel para mostrar progreso la primera vez
+    } else {
+      $('chipsPlazos').innerHTML  = '<span style="color:var(--muted);font-size:.8rem">📵 Sin conexión — no hay datos guardados</span>';
+      $('chipsCapital').innerHTML = '';
+      toast('Sin conexión y sin caché local', 3500);
+      updateStatus('offline');
+    }
+  }
+
+  // Listeners de conectividad
+  window.addEventListener('online',  () => { updateStatus('online');  sincronizar(true); });
+  window.addEventListener('offline', () => { updateStatus('offline'); toast('📵 Modo offline — usando caché'); });
+}
+
+init();
+</script>
 </body>
 </html>
